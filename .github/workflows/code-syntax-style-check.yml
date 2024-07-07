@@ -1,0 +1,39 @@
+name: Code syntax and style check
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # Allows you to run this workflow manually from the Actions tab
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+        - info
+        - warning
+        - debug
+
+jobs:
+  build:
+    name: Check code syntax and style
+    runs-on: ubuntu-latest  # The only platform that supports containers
+    
+    steps:
+    - name: Chceckout code
+      uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+
+    - name: Lint Code Base
+      uses: super-linter/super-linter/slim@v5
+      env:
+          VALIDATE_ALL_CODEBASE: true
+          DEFAULT_BRANCH: main
+          VALIDATE_YAML: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_CPP_CPPLINT: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
