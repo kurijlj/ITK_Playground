@@ -63,12 +63,12 @@ jobs:
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
-      run: >
-			if [ ${{ matrix.os }} == 'windows-latest' ]; then
-				echo "build-output-dir=$HOME\build" >> "$GITHUB_OUTPUT"
-			else
-				echo "build-output-dir=$HOME/.local/build" >> "$GITHUB_OUTPUT"
-			fi
+      run: |
+        if [ ${{ gmatrix.os }} == 'refs/heads/main' ]; then
+          echo "build-output-dir=$HOME\build" >> "$GITHUB_OUTPUT"
+        else
+          echo "build-output-dir=$HOME/.local/build" >> "$GITHUB_OUTPUT"
+        fi
           
     - name: Pull project submodules
       shell: bash
