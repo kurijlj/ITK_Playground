@@ -64,7 +64,7 @@ jobs:
       id: strings
       shell: bash
       run: |
-        if [ ${{ matrix.os }} == 'wndows-latest' ]; then
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
           echo "build-output-dir=$HOME\build" >> "$GITHUB_OUTPUT"
         else
           echo "build-output-dir=$HOME/.local/build" >> "$GITHUB_OUTPUT"
