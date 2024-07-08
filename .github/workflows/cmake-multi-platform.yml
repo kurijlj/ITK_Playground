@@ -66,27 +66,9 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
           
-    - name: Install Libsodium
-      shell: bash
-      run: |
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          sudo apt-get update
-          sudo apt-get install -y libsodium-dev
-        fi
-
     - name: Pull project submodules
       shell: bash
       run: git submodule update --init --recursive
-
-    - name: Update CSV Reader CMakelists Ubuntu
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      shell: bash
-      run: cp -f ${{ github.workspace }}/extern/CMakeLists_CSV.txt ${{ github.workspace }}/extern/csv-parser/CMakeLists.txt
-
-    - name: Update CSV Reader CMakelists Windows
-      if: ${{ matrix.os == 'windows-latest' }}
-      shell: powershell
-      run: Copy-Item -Path ${{ github.workspace }}/extern/CMakeLists_CSV.txt -Destination ${{ github.workspace }}/extern/csv-parser/CMakeLists.txt
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.

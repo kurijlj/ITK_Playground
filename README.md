@@ -30,7 +30,7 @@ business logic and CMake build instructions required for your app.
    can specify the generator by invoking with the -G switch):
 
        ``` shell
-       cmake -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -B . -S <project_source_tree>
+       cmake -G <Generator> -B . -S <project_source_tree> -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -DBUILD_TESTS:BOOL=[ON|OFF]
        ```
 
    3. Build executable using:
@@ -41,14 +41,18 @@ business logic and CMake build instructions required for your app.
 
 ## Third-party Library Integration
 
-- **[clipp](https://github.com/muellan/clipp):** The framework assumes clipp as
-  a header-only library. Steps on how to link to the library are described in
-  the top-level CMakeLists.txt file.
+- **[ITK](https://itk.org/):** Open-source, cross-platform library for
+  processing, segmentation, and registration of scientific images in two, three,
+  or more dimensions.
+- **[clipp](https://github.com/muellan/clipp):** Command line interfaces library
+  for modern C++.
 
 ## Build Targets
 
-- **app:** Framework for developing command line applications using 'clipp'
-  command line argument parsing library.
+- **dummy:** A dummy target that does nothing. Useful for testing
+  the build tool.
+- **create_image:** A simple test of ITK create image and write to image
+  facilities.
 - **all**: Build all abovementioned targets.
 
 ## License
