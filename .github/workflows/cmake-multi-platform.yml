@@ -64,7 +64,7 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=$HOME/.local/build" >> "$GITHUB_OUTPUT"
+        echo "build-output-dir=$HOME/build" >> "$GITHUB_OUTPUT"
           
     - name: Pull project submodules
       shell: bash
