@@ -64,7 +64,11 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+				if [ ${{ matrix.os }} == 'windows-latest' ]; then
+        	echo "build-output-dir=$HOME\build" >> "$GITHUB_OUTPUT"
+				else
+        	echo "build-output-dir=$HOME/.local/build" >> "$GITHUB_OUTPUT"
+				fi
           
     - name: Pull project submodules
       shell: bash
