@@ -34,9 +34,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set reusable strings
-      shell: bash
+    - name: Set reusable strings for Windows Runner
+      id: set-strings-windows
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: |
-        echo "Hello, world!"
-        echo "The OS is ${{ matrix.os }}"
-        echo "Working directory is ${{ github.workspace }}"
+        $BuildOutputDir = "$HOME\builds"
+        Write-Output ::set-output name=GITHUB_ENV::"build-output-dir=$BuildOutputDir"
+        Write-Output $GITHUB_ENV
+
+    - name: Set reusable strings for Ubuntu Runner
+      id: set-strings-ubuntu
+      if: runner.os == 'Linux'
+      run: |
+        BuildOutputDir="$HOME/builds"
+        echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
+        echo $GITHUB_ENV
