@@ -1,0 +1,42 @@
+# This is a dummy workflow used to test and demonstrate workflow workings.
+name: Dummy Action
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+        - info
+        - warning
+        - debug
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ~/projects
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set reusable strings
+      shell: bash
+      run: |
+        echo "Hello, world!"
+        echo "The OS is ${{ matrix.os }}"
+        echo "Working directory is ${{ github.workspace }}"
