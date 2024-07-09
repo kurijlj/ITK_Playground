@@ -32,18 +32,9 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set reusable strings for Windows Runner
-      id: set-strings-windows
-      if: runner.os == 'Windows'
-      shell: pwsh
+      id: build-output-dir
+      shell: bash
       run: |
-        $BuildOutputDir = "$HOME\builds"
-        Write-Output ::set-output name=GITHUB_ENV::"build-output-dir=$BuildOutputDir"
-        Write-Output $GITHUB_ENV
-
-    - name: Set reusable strings for Ubuntu Runner
-      id: set-strings-ubuntu
-      if: runner.os == 'Linux'
-      run: |
-        BuildOutputDir="$HOME/builds"
+        $BuildOutputDir="$HOME/builds"
         echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
-        echo $GITHUB_ENV
+        echo ${{ steps.strings.outputs.build-output-dir }}
