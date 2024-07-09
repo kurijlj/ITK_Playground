@@ -35,7 +35,7 @@ jobs:
       id: build-output-dir
       shell: bash
       run: |
-        mkdir -p $HOME/builds
+        mkdir -p "$HOME/builds"
         $BuildOutputDir="$HOME/builds"
         echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
         echo ${{ steps.strings.outputs.build-output-dir }}
