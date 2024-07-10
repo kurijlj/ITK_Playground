@@ -45,4 +45,4 @@ jobs:
       id: cmake-configure
       run: |
         echo "Build output directory: ${{ steps.strings.outputs.build-output-dir }}"
-        cmake -B ${{ steps.strings.outputs.build-output-dir }} -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} -S . -DCMAKE_BUILD_TYPE=Release
