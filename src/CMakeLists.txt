@@ -5,57 +5,49 @@
 # Print message to console that we are building the source targets
 message(STATUS "Going through ./src")
 
+
 # -----------------------------------------------------------------------------
-# app
+# Target: dummy
+# -----------------------------------------------------------------------------
+#
+# Description: A dummy target that does nothing. This is useful for testing
+#              the build tool.
+#
 # -----------------------------------------------------------------------------
 
-# Show message that we are building the app target
-message(STATUS "Configuring the `app` target")
+# Show message that we are building the `dummy' target
+message(STATUS "Configuring the `dummy' target")
+
+# Add a dummy target
+add_custom_target(dummy
+    COMMAND ${CMAKE_COMMAND} -E echo "Dummy target"
+)
+
+
+
+# -----------------------------------------------------------------------------
+# Target: create_image
+# -----------------------------------------------------------------------------
+#
+# Description: A simple test of ITK create image and write to image facilities.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `create_image' target
+message(STATUS "Configuring the `create_image` target")
+
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
 
 # Set the source files for the `app` target
-add_executable(app app.cpp)
+add_executable(create_image create_image.cpp)
 
-# Link the `app` target with the required libraries
-target_link_libraries(app PRIVATE
-    clipp
-    sqlite3
-    Libsodium
-    csv
+# Link the `create_image` target with the required libraries
+target_link_libraries(create_image PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
 )
 
-# Include the required directories for the `app` target
-target_include_directories(app PRIVATE
-    ${CSV_INCLUDE_DIR}
-)
-
-# Post-build actions for the `app` target
-add_custom_command(TARGET app POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${PROJECT_SOURCE_DIR}/sample_data
-        ${CMAKE_CURRENT_BINARY_DIR}/sample_data
-)
-
-if (BUILD_SHARED_LIBS AND WIN32)
-    # Copy the shared libraries to the output directory
-    add_custom_command(TARGET app POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${Libsodium_SHARED_LIBRARY}/libsodium.dll"
-            "$<TARGET_FILE_DIR:app>"
-    )
-endif ()
-
-
-# -----------------------------------------------------------------------------
-# stat_demo
-# -----------------------------------------------------------------------------
-
-# Show message that we are building the `stat_demo` target
-message(STATUS "Configuring the `stat_demo` target")
-
-# Set the source files for the `stat_demo` target
-add_executable(stat_demo stat_demo.cpp)
-
-# Link the `stat_demo` target with the required libraries
-target_link_libraries(stat_demo PRIVATE
-    clipp
-)
+# target_include_directories(create_image PRIVATE
+# 	"${ITK_INCLUDE_DIRS}"
+# )
