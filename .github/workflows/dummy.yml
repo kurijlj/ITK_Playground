@@ -35,7 +35,10 @@ jobs:
       id: build-output-dir
       shell: bash
       run: |
-        mkdir -p "${{ github.workspace }}/builds"
-        $BuildOutputDir="${{ github.workspace }}/builds"
-        echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
-        echo ${{ steps.strings.outputs.build-output-dir }}
+        if [ ${{ matrix.os }} == 'windows-latest' ]; then
+          BuildOutputDir="${{ github.workspace }}\\..\\..\\builds"
+          echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
+        else
+          BuildOutputDir="${{ github.workspace }}/../../builds"
+          echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
+        fi
