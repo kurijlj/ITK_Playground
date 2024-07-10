@@ -35,13 +35,7 @@ jobs:
       id: build-output-dir
       shell: bash
       run: |
-        if [ ${{ matrix.os }} == 'windows-latest' ]; then
-          BuildOutputDir="$HOME\\builds"
-          echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
-        else
-          BuildOutputDir="$HOME/builds"
-          echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
-        fi
+        echo "build-output-dir=$HOME/builds" >> $GITHUB_ENV
 
     - name: Configure CMake
       id: cmake-configure
