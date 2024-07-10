@@ -36,10 +36,10 @@ jobs:
       shell: bash
       run: |
         if [ ${{ matrix.os }} == 'windows-latest' ]; then
-          BuildOutputDir="${{ github.workspace }}\\..\\..\\builds"
+          BuildOutputDir="$HOME\\..\\..\\builds"
           echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
         else
-          BuildOutputDir="${{ github.workspace }}/../../builds"
+          BuildOutputDir="$HOME/../../builds"
           echo "build-output-dir=$BuildOutputDir" >> $GITHUB_ENV
         fi
 
