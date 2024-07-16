@@ -24,7 +24,6 @@ add_custom_target(dummy
 )
 
 
-
 # -----------------------------------------------------------------------------
 # Target: create_image
 # -----------------------------------------------------------------------------
@@ -48,6 +47,26 @@ target_link_libraries(create_image PRIVATE
   ${ITK_LIBRARIES}
 )
 
-# target_include_directories(create_image PRIVATE
-# 	"${ITK_INCLUDE_DIRS}"
-# )
+
+# -----------------------------------------------------------------------------
+# Target: create_step_wedge
+# -----------------------------------------------------------------------------
+#
+# Description: Create computational optical density step wedge image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `create_step_wedge' target
+message(STATUS "Configuring the `create_step_wedge` target")
+
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+# Set the source files for the `create_step_wedge` target
+add_executable(create_step_wedge create_step_wedge.cpp)
+
+# Link the `create_step_wedge` target with the required libraries
+target_link_libraries(create_step_wedge  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
