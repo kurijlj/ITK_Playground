@@ -53,6 +53,7 @@
 #include <clipp.hpp>             // command line arguments parsing
 #include <itkImage.h>            // required by itk::Image
 #include <itkImageFileWriter.h>  // required for writing image data to file
+#include <itkRGBPixel.h>         // required for handling RGB images
 #include <itkSmartPointer.h>     // required by itk::SmartPointer
 #include <itkTIFFImageIO.h>      // required for reading and writing TIFF images
 #include <itkVector.h>           // required by itk::Vector (RGB pixel type)
@@ -67,10 +68,13 @@
 // User defined types section
 // ============================================================================
 
-using RGB16Pixel = itk::Vector<uint16_t, 3>;  // RGB pixel with 16-bit unsigned
-                                              // integer values
-using RGB16Image = itk::Image<RGB16Pixel, 2>; // 2D RGB image with 16-bit
-                                              // unsigned integer pixel values
+using ComponentType = uint16_t;                   // 16-bit unsigned integer
+                                                  // type
+using RGB16Pixel = itk::RGBPixel<ComponentType>;  // RGB pixel with 16-bit
+                                                  // unsigned integer values
+using RGB16Image = itk::Image<RGB16Pixel, 2>;     // 2D RGB image with 16-bit
+                                                  // unsigned integer pixel
+                                                  // values
 
 
 // ============================================================================
@@ -238,51 +242,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Main code goes here ----------------------------------------------------
-    /*
-    auto image = RGB16Image::New();
-
-    RGB16Image::RegionType region;
-    RGB16Image::IndexType start;
-    start[0] = 0;
-    start[1] = 0;
-    RGB16Image::SpacingType spacing;
-    spacing[0] = 25.4 / 400.0;
-    spacing[1] = 25.4 / 400.0;
-
-    RGB16Image::SizeType size;
-    unsigned int NumRows = 400;
-    unsigned int NumCols = 400;
-    size[0] = NumRows;
-    size[1] = NumCols;
-
-    region.SetSize(size);
-    region.SetIndex(start);
-
-    image->SetRegions(region);
-    image->SetSpacing(spacing);
-    image->Allocate();
-    RGB16Image::PixelType pixelValue;
-    pixelValue[0] = 65535;
-    pixelValue[1] = 65535;
-    pixelValue[2] = 65535;
-    image->FillBuffer(pixelValue);
-
-    // Make a square
-    unsigned int squareOrigin[2] = {50, 50};
-    unsigned int squareSize[2] = {100, 100};
-    for (unsigned int x = squareOrigin[0]; x <= squareOrigin[0] + squareSize[0];
-         ++x) {
-      for (unsigned int y = squareOrigin[1];
-           y < squareOrigin[1] + squareSize[1]; ++y) {
-        RGB16Image::IndexType pixelIndex;
-        pixelIndex[0] = x;
-        pixelIndex[1] = y;
-
-        pixelValue[1] = 65535;
-        image->SetPixel(pixelIndex, pixelValue);
-      }
-    }
-    */
     auto image = create_step_wedge(
       std::array<double, 21> {0.04, 0.20, 0.35, 0.51, 0.65, 0.80, 0.94, 1.11,
         1.27, 1.43, 1.59, 1.73, 1.88, 2.02, 2.18, 2.32, 2.49, 2.64,
