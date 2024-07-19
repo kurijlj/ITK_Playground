@@ -70,3 +70,27 @@ target_link_libraries(create_step_wedge  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
+
+
+# -----------------------------------------------------------------------------
+# Target: image_affine_transform
+# -----------------------------------------------------------------------------
+#
+# Description: Rotate and translate an image using ITK.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `image_affine_transform' target
+message(STATUS "Configuring the `image_affine_transform` target")
+
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+# Set the source files for the `image_affine_transform` target
+add_executable(image_affine_transform image_affine_transform.cpp)
+
+# Link the `image_affine_transform` target with the required libraries
+target_link_libraries(image_affine_transform  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
