@@ -52,6 +52,7 @@
 #include <itkImage.h>                // required by itk::Image
 #include <itkImageFileReader.h>      // required for the reading image data
 #include <itkImageFileWriter.h>      // required for writing image data to file
+#include <itkSmartPointer.h>         // required by itk::SmartPointer
 #include <itkTIFFImageIO.h>          // required for reading and writing
                                      // TIFF images
 
@@ -91,6 +92,45 @@ void printUsage(const clipp::group &, const std::string = kAppName,
 void printVersionInfo();
 void showHelp(const clipp::group &, const std::string = kAppName,
               const std::string = kAppDoc);
+
+
+// ============================================================================
+// Utility class definitions
+// ============================================================================
+
+// class ITKIOTIFF_EXPORT TIFFImageIOHelper : public itk::TIFFImageIO {
+class TIFFImageIOHelper : public itk::TIFFImageIO {
+public:
+  ITK_DISALLOW_COPY_AND_MOVE(TIFFImageIOHelper);
+
+  /** Standard class type aliases. */
+  using Self = TIFFImageIOHelper;
+  using Superclass = itk::TIFFImageIO;
+  using Pointer = itk::SmartPointer<Self>;
+
+  /** Method for creation through the object factory. */
+  itkNewMacro(Self);
+
+  /** Run-time type information (and related methods). */
+  itkTypeMacro(TIFFImageIO, ImageIOBase);
+
+  unsigned int GetCompression() {
+    unsigned int value_count = 2;
+    unsigned int * value = nullptr;
+    value = static_cast<unsigned int *>(
+      this->ReadRawByteFromTag(259, value_count)
+      );
+    if (value == nullptr) {
+      return 0;
+    } else {
+      return *value;
+    }
+  }
+
+protected:
+  TIFFImageIOHelper() = default;
+  ~TIFFImageIOHelper() override = default;
+};
 
 
 // ============================================================================
@@ -279,7 +319,7 @@ int main(int argc, char *argv[]) {
                                                  // unsigned integer values
 
     // Instantiate the TIFF image reader
-    auto tiffImageIO = itk::TIFFImageIO::New();
+    auto tiffImageIO = TIFFImageIOHelper::New();
     tiffImageIO->SetFileName(user_options.input_file);
 
     // Read the image information from the file
@@ -316,7 +356,7 @@ int main(int argc, char *argv[]) {
     }
     std::cout << ")\n";
 
-    std::cout << "Compressor: " << tiffImageIO->GetCompressor() << "\n";
+    std::cout << "Compression: " << tiffImageIO->GetCompression() << "\n";
 
     // Write the image to the file
     /*
