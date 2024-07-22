@@ -94,3 +94,27 @@ target_link_libraries(image_affine_transform  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
+
+
+# -----------------------------------------------------------------------------
+# Target: split_channels
+# -----------------------------------------------------------------------------
+#
+# Description: Split color channels of an image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `split_channels' target
+message(STATUS "Configuring the `split_channels` target")
+
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+# Set the source files for the `split_channels` target
+add_executable(split_channels split_channels.cpp)
+
+# Link the `split_channels` target with the required libraries
+target_link_libraries(split_channels  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
