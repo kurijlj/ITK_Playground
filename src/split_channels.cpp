@@ -98,40 +98,6 @@ void showHelp(const clipp::group &, const std::string = kAppName,
 // Utility class definitions
 // ============================================================================
 
-// class ITKIOTIFF_EXPORT TIFFImageIOHelper : public itk::TIFFImageIO {
-class TIFFImageIOHelper : public itk::TIFFImageIO {
-public:
-  ITK_DISALLOW_COPY_AND_MOVE(TIFFImageIOHelper);
-
-  /** Standard class type aliases. */
-  using Self = TIFFImageIOHelper;
-  using Superclass = itk::TIFFImageIO;
-  using Pointer = itk::SmartPointer<Self>;
-
-  /** Method for creation through the object factory. */
-  itkNewMacro(Self);
-
-  /** Run-time type information (and related methods). */
-  itkTypeMacro(TIFFImageIO, ImageIOBase);
-
-  unsigned int GetCompression() {
-    unsigned int value_count = 2;
-    unsigned int * value = nullptr;
-    value = static_cast<unsigned int *>(
-      this->ReadRawByteFromTag(259, value_count)
-      );
-    if (value == nullptr) {
-      return 0;
-    } else {
-      return *value;
-    }
-  }
-
-protected:
-  TIFFImageIOHelper() = default;
-  ~TIFFImageIOHelper() override = default;
-};
-
 
 // ============================================================================
 // Main Function Section
@@ -319,7 +285,7 @@ int main(int argc, char *argv[]) {
                                                  // unsigned integer values
 
     // Instantiate the TIFF image reader
-    auto tiffImageIO = TIFFImageIOHelper::New();
+    auto tiffImageIO = itk::TIFFImageIO::New();
     tiffImageIO->SetFileName(user_options.input_file);
 
     // Read the image information from the file

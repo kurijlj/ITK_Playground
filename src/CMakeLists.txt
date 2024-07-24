@@ -107,14 +107,29 @@ target_link_libraries(image_affine_transform  PRIVATE
 # Show message that we are configuring the `split_channels' target
 message(STATUS "Configuring the `split_channels` target")
 
+# Find required libraries and packages
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
 # Set the source files for the `split_channels` target
-add_executable(split_channels split_channels.cpp)
+add_executable(split_channels split_channels.cpp )
 
 # Link the `split_channels` target with the required libraries
 target_link_libraries(split_channels  PRIVATE
   clipp
   ${ITK_LIBRARIES}
+)
+
+# Add pre-build command to patch the ITK source code
+add_custom_command(
+  TARGET split_channels
+  PRE_LINK
+  COMMAND ${CMAKE_COMMAND} -E echo "Patching ITK source code"
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/itkTIFFImageIO.h ${itk_SOURCE_DIR}/Modules/IO/TIFF/include/
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/itkTIFFImageIO.cxx ${itk_SOURCE_DIR}/Modules/IO/TIFF/src/
 )

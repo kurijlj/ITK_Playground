@@ -30,7 +30,7 @@ business logic and CMake build instructions required for your app.
    can specify the generator by invoking with the -G switch):
 
        ``` shell
-       cmake -G <Generator> -B . -S <project_source_tree> -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -DBUILD_TESTS:BOOL=[ON|OFF]
+       cmake -G <Generator> -B . -S <project_source_tree> -DITK_SKIP_PATH_LENGTH_CHECKS:BOOL=[ON|OFF] -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -DBUILD_TESTS:BOOL=[ON|OFF]
        ```
 
    3. Build executable using:
