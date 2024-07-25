@@ -39,7 +39,7 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `app` target
-add_executable(create_image create_image.cpp)
+add_executable(create_image create_image.cxx)
 
 # Link the `create_image` target with the required libraries
 target_link_libraries(create_image PRIVATE
@@ -63,7 +63,7 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `create_step_wedge` target
-add_executable(create_step_wedge create_step_wedge.cpp)
+add_executable(create_step_wedge create_step_wedge.cxx)
 
 # Link the `create_step_wedge` target with the required libraries
 target_link_libraries(create_step_wedge  PRIVATE
@@ -87,7 +87,7 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `image_affine_transform` target
-add_executable(image_affine_transform image_affine_transform.cpp)
+add_executable(image_affine_transform image_affine_transform.cxx)
 
 # Link the `image_affine_transform` target with the required libraries
 target_link_libraries(image_affine_transform  PRIVATE
@@ -117,19 +117,10 @@ if (NOT Git_FOUND)
 endif()
 
 # Set the source files for the `split_channels` target
-add_executable(split_channels split_channels.cpp )
+add_executable(split_channels split_channels.cxx )
 
 # Link the `split_channels` target with the required libraries
 target_link_libraries(split_channels  PRIVATE
   clipp
   ${ITK_LIBRARIES}
-)
-
-# Add pre-build command to patch the ITK source code
-add_custom_command(
-  TARGET split_channels
-  PRE_LINK
-  COMMAND ${CMAKE_COMMAND} -E echo "Patching ITK source code"
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/itkTIFFImageIO.h ${itk_SOURCE_DIR}/Modules/IO/TIFF/include/
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/itkTIFFImageIO.cxx ${itk_SOURCE_DIR}/Modules/IO/TIFF/src/
 )

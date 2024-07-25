@@ -1,5 +1,5 @@
 // ============================================================================
-// create_step_wedge.cpp (ITK_Playground) - Create computational step wedge
+// image_affine_transform.cxx (ITK_Playground) - Rotate and translate an image
 //
 //  Copyright (C) 2024 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
@@ -20,9 +20,9 @@
 
 // ============================================================================
 //
-// 2024-07-16 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
+// 2024-07-18 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
-// * create_step_wedge.cpp: created.
+// * image_affine_transform.cxx: created.
 //
 // ============================================================================
 
@@ -39,60 +39,47 @@
 // Related header
 
 // "C" headers
-#include <cstdlib>               // required by EXIT_SUCCESS, EXIT_FAILURE
-#include <cmath>                 // required by log10f
+#include <cmath>                     // required by std::cos, std::sin
+#include <cstdlib>                   // required by EXIT_SUCCESS, EXIT_FAILURE
 
 // Standard Library headers
-#include <array>
-#include <exception>             // required by std::current_exception
-#include <filesystem>            // required by std::filesystem
-#include <iostream>              // required by cin, cout, cerr, ...
-#include <string>                // required by std::string
+#include <exception>                 // required by std::current_exception
+#include <filesystem>                // required by std::filesystem
+#include <iostream>                  // required by cin, cout, ...
+#include <string>                    // required by std::string
 
 // External libraries headers
-#include <clipp.hpp>             // command line arguments parsing
-#include <itkImage.h>            // required by itk::Image
-#include <itkImageFileWriter.h>  // required for writing image data to file
-#include <itkRGBPixel.h>         // required for handling RGB images
-#include <itkSmartPointer.h>     // required by itk::SmartPointer
-#include <itkTIFFImageIO.h>      // required for reading and writing TIFF images
-#include <itkVector.h>           // required by itk::Vector (RGB pixel type)
-
-
-// ============================================================================
-// Namespace alias section
-// ============================================================================
-
-
-// ============================================================================
-// User defined types section
-// ============================================================================
-
-using ComponentType = uint16_t;                   // 16-bit unsigned integer
-                                                  // type
-using RGB16Pixel = itk::RGBPixel<ComponentType>;  // RGB pixel with 16-bit
-                                                  // unsigned integer values
-using RGB16Image = itk::Image<RGB16Pixel, 2>;     // 2D RGB image with 16-bit
-                                                  // unsigned integer pixel
-                                                  // values
+#include <clipp.hpp>                 // command line arguments parsing
+#include <itkAffineTransform.h>      // required for affine transformation
+#include <itkImage.h>                // required by itk::Image
+#include <itkImageFileReader.h>      // required for the reading image data
+#include <itkImageFileWriter.h>      // required for writing image data to file
+#include <itkResampleImageFilter.h>  // required for resampling the image
+#include <itkSmartPointer.h>         // required for smart pointers
+#include <itkTIFFImageIO.h>          // required for reading and writing
+                                     // TIFF images
+#include <itkWindowedSincInterpolateImageFunction.h>  // required for
+                                                      // interpolating the image
 
 
 // ============================================================================
 // Global constants section
 // ============================================================================
 
-static const std::string kAppName = "create_step_wedge";
+static const std::string kAppName = "image_affine_transform";
 static const std::string kVersionString = "0.1";
 static const std::string kYearString = "2024";
 static const std::string kAuthorName = "Ljubomir Kurij";
 static const std::string kAuthorEmail = "ljubomir_kurij@protonmail.com";
 static const std::string kAppDoc = "\
-A simple test of ITK create image and write to image facilities.\n\n\
+Rotate and translate an image using ITK.\n\n\
 Mandatory arguments to long options are mandatory for short options too.\n";
 static const std::string kLicense = "\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This is free software: you are free to change and redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\n";
+
+static const double kPi = 3.14159265358979323846;
 
 
 // ============================================================================
@@ -115,31 +102,6 @@ void showHelp(const clipp::group &, const std::string = kAppName,
 
 
 // ============================================================================
-// Function prototypes
-// ============================================================================
-
-// ----------------------------------------------------------------------------
-// 'create_step_wedge' function
-// ----------------------------------------------------------------------------
-//
-// Description:
-// Create a computational step wedge image.
-//
-// Parameters:
-//   od: Reference to the initializer list of the optical density values.
-//   dpi: Image resolution in dots per inch.
-//
-// Returns:
-//   A pointer to the created image.
-//
-// ----------------------------------------------------------------------------
-RGB16Image::Pointer create_step_wedge(
-  std::array<double, 21> od,
-  uint16_t dpi = 400
-  );
-
-
-// ============================================================================
 // Main Function Section
 // ============================================================================
 
@@ -157,15 +119,19 @@ int main(int argc, char *argv[]) {
     bool show_help;
     bool print_usage;
     bool show_version;
+    std::string input_file;
+    std::string output_file;
     std::vector<std::string> unsupported;
   };
 
   // Define the default values for the command line options
   CLIOptions user_options{
-      false, // show_help
-      false, // print_usage
-      false, // show_version
-      {}     // unsupported options aggregator
+      false,        // show_help
+      false,        // print_usage
+      false,        // show_version
+      "",           // input_file
+      "result.tif", // output_file
+      {}            // unsupported options aggregator
   };
 
   // Option filters definitions
@@ -184,16 +150,19 @@ int main(int argc, char *argv[]) {
       // - Define positional srguments as optional to enforce the priority of
       //   help, usage and version switches. Then enforce the required
       //   positional arguments by checking if their values are set.
-      (clipp::option("-h", "--help")
+      (
+        clipp::opt_value(istarget, "INPUT_FILE", user_options.input_file),
+        clipp::opt_value(istarget, "OUTPUT_FILE", user_options.output_file),
+        clipp::option("-h", "--help")
            .set(user_options.show_help)
            .doc("show this help message and exit"),
-       clipp::option("--usage")
+        clipp::option("--usage")
            .set(user_options.print_usage)
            .doc("give a short usage message"),
-       clipp::option("-V", "--version")
+        clipp::option("-V", "--version")
            .set(user_options.show_version)
-           .doc("print program version"))
-          .doc("general options:"),
+           .doc("print program version")
+        ).doc("general options:"),
       clipp::any_other(user_options.unsupported));
 
   // Execute the main code inside a try block to catch any exceptions and
@@ -241,29 +210,192 @@ int main(int argc, char *argv[]) {
       throw EXIT_SUCCESS;
     }
 
-    // Main code goes here ----------------------------------------------------
-    auto image = create_step_wedge(
-      std::array<double, 21> {0.04, 0.20, 0.35, 0.51, 0.65, 0.80, 0.94, 1.11,
-        1.27, 1.43, 1.59, 1.73, 1.88, 2.02, 2.18, 2.32, 2.49, 2.64,
-        2.79, 2.91, 3.08}
-    );
+    // No high priority switch was triggered. Now we check if the input
+    // file was passed. If not we print the usage message and exit.
+    if (user_options.input_file.empty()) {
+      auto fmt = clipp::doc_formatting {}
+        .first_column(0)
+        .last_column(79)
+        .merge_alternative_flags_with_common_prefix(true);
+      std::cout << "Usage: ";
+      printUsage(parser_config, exec_name, fmt);
 
+      std::cout << std::endl;
+
+      // Print short help message
+      printShortHelp(exec_name);
+
+      throw EXIT_FAILURE;
+    }
+
+    // Input file was passed. Now we check if the file exists, is
+    // readable and is a regular file and not an empty file.
+    // Check if the file exists
+    if (!fs::exists (user_options.input_file)) {
+      std::cerr << kAppName
+        << ": File does not exist: "
+        << user_options.input_file
+        << std::endl;
+      throw EXIT_FAILURE;
+    }
+
+    // Check if the file is a regular file
+    if (!fs::is_regular_file (user_options.input_file)) {
+      std::cerr << kAppName
+        << ": Not a regular file: "
+        << user_options.input_file
+        << std::endl;
+      throw EXIT_FAILURE;
+    }
+
+    // Check if the file is empty
+    if (fs::file_size (user_options.input_file) == 0) {
+      std::cerr << kAppName
+        << ": Empty file: "
+        << user_options.input_file
+        << std::endl;
+      throw EXIT_FAILURE;
+    }
+
+    // Open the file in binary mode for wider compatibility
+    std::ifstream file (
+      user_options.input_file,
+      std::ios::binary
+      );
+
+    // Check if the file was opened successfully
+    // (if we can read it)
+    if (!file.is_open()) {
+      std::cerr << kAppName
+        << ": Error opening file: "
+        << user_options.input_file
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
+    // Check if the output file already exists
+    if (fs::exists (user_options.output_file)) {
+      std::cerr << kAppName
+        << ": Output file already exists: "
+        << user_options.output_file
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
+    // Main code goes here ----------------------------------------------------
+    constexpr unsigned int Dimension = 2;  // We are working with 2D images
+    constexpr unsigned int Radius = 3;   // Radius of the interpolation window
+    using ScalarType = double;  // We are using double precision floating point
+                                // values for the affine transformation matrix
+    // Define the affine transformation matrix type
+    using MatrixType = itk::Matrix<ScalarType, Dimension + 1, Dimension + 1>;  
+    using RGB16Pixel = itk::RGBPixel<uint16_t>;  // RGB pixel with 16-bit
+                                                 // unsigned integer values
+    RGB16Pixel defaultFillValue;
+    defaultFillValue[0] = 0;  // Default pixel value for the image
+    defaultFillValue[1] = 0;
+    defaultFillValue[2] = 0;
+    using RGB16Image = itk::Image<RGB16Pixel, 2>;   // 2D RGB image with 16-bit
+                                                    // unsigned integer pixel
+                                                    // values
+    // Define the image resampling filter type
+    using ResampleImageFilterType
+      = itk::ResampleImageFilter<RGB16Image, RGB16Image>;
+    // Use the windowed sinc function to interpolate (minimize aliasing)
+    using InterpolatorType =
+      itk::WindowedSincInterpolateImageFunction<RGB16Image, Radius>;
+    // Define the affine transformation type
+    using TransformType = itk::AffineTransform<ScalarType, Dimension>;
     using WriterType = itk::ImageFileWriter<RGB16Image>;
     using TIFFIOType = itk::TIFFImageIO;
 
-    auto tiffIO = TIFFIOType::New();
-    tiffIO->SetPixelType(itk::IOPixelEnum::RGB);
-
-    auto writer = WriterType::New();
-    writer->SetFileName("output.tiff");
-    writer->SetInput(image);
-    writer->SetImageIO(tiffIO);
+    // Read the image from the file
+    itk::SmartPointer<RGB16Image> input;
 
     try {
-      writer->Update();
-    } catch (const itk::ExceptionObject &error) {
+      input = itk::ReadImage<RGB16Image>(user_options.input_file);
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << kAppName
+        << ": Error opening file: "
+        << user_options.input_file
+        << ". "
+        << error
+        << "\n";
       std::cerr << "Error: " << error << std::endl;
+      throw EXIT_FAILURE;
+    }
 
+    const RGB16Image::SizeType & size
+      = input->GetLargestPossibleRegion().GetSize();
+
+    auto resample = ResampleImageFilterType::New();
+    resample->SetInput(input);
+    resample->SetReferenceImage(input);
+    resample->UseReferenceImageOn();
+    resample->SetSize(size);
+    resample->SetDefaultPixelValue(defaultFillValue);
+
+    using InterpolatorType
+      = itk::WindowedSincInterpolateImageFunction<RGB16Image, Radius>;
+    auto interpolator = InterpolatorType::New();
+
+    resample->SetInterpolator(interpolator);
+
+    auto transform = TransformType::New();
+
+    // Define the affine transformation matrix
+    MatrixType matrix;
+    matrix[0][0] = std::cos(kPi / 4.0);
+    matrix[0][1] = std::sin(kPi / 4.0);
+    matrix[0][2] = 0.;
+
+    matrix[1][0] = -matrix[0][1];
+    matrix[1][1] = matrix[0][0];
+    matrix[1][2] = 0.;
+
+    matrix[2][0] = -100.;
+    matrix[2][1] = -100.;
+    matrix[2][2] = 1.;   
+
+    // get transform parameters from MatrixType
+    TransformType::ParametersType parameters(Dimension * Dimension + Dimension);
+    for (unsigned int i = 0; i < Dimension; ++i)
+    {
+      for (unsigned int j = 0; j < Dimension; ++j)
+      {
+        parameters[i * Dimension + j] = matrix[i][j];
+      }
+    }
+    for (unsigned int i = 0; i < Dimension; ++i)
+    {
+      parameters[i + Dimension * Dimension] = matrix[i][Dimension];
+    }
+    transform->SetParameters(parameters);
+
+    resample->SetTransform(transform);
+
+    // Write the image to the file
+    try {
+      auto tiffIO = TIFFIOType::New();
+      tiffIO->SetPixelType(itk::IOPixelEnum::RGB);
+      auto writer = WriterType::New();
+      writer->SetFileName(user_options.output_file);
+      writer->SetInput(resample->GetOutput());
+      writer->SetImageIO(tiffIO);
+      writer->Update();
+      /*
+      itk::WriteImage<RGB16Image>(
+        resample->GetOutput(),
+        user_options.output_file
+        );
+      */
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << kAppName
+        << ": Error writing file: "
+        << user_options.output_file
+        << ". "
+        << error
+        << "\n";
       throw EXIT_FAILURE;
     }
 
@@ -273,6 +405,7 @@ int main(int argc, char *argv[]) {
   } catch (int result) {
     // Return the result of the main code
     return result;
+
   } catch (...) {
     // We have an unhandled exception. Print error message and exit
     try {
@@ -295,7 +428,7 @@ int main(int argc, char *argv[]) {
 
 
 // ============================================================================
-// Utility function definitions
+// Function definitions
 // ============================================================================
 
 inline void printShortHelp(std::string exec_name) {
@@ -325,144 +458,3 @@ void showHelp(const clipp::group &group, const std::string exec_name,
 
   std::cout << man;
 }
-
-
-// ============================================================================
-// Function definitions
-// ============================================================================
-
-RGB16Image::Pointer create_step_wedge(
-    std::array<double, 21> od,
-    uint16_t dpi
-    ) {
-  auto image = RGB16Image::New();
-
-  // Step wedge dimensions in inches
-  double stepWedgeWidth = 0.50;
-  double stepWedgeHeight = 5.00;
-  double imageWidth = stepWedgeWidth + 0.80 * stepWedgeWidth;
-  double imageHeight = stepWedgeHeight + 0.80 * stepWedgeWidth;
-  double firstStepWidth = 0.59;
-  double stepWidth = 0.2;
-
-  RGB16Image::RegionType region;
-  RGB16Image::IndexType start;
-  start[0] = 0;
-  start[1] = 0;
-  RGB16Image::SpacingType spacing;
-  spacing[0] = 25.4 / static_cast<double>(dpi);
-  spacing[1] = 25.4 / static_cast<double>(dpi);
-
-  RGB16Image::SizeType size;
-  uint16_t NumRows = static_cast<uint16_t> (round (imageHeight * dpi));
-  uint16_t NumCols = static_cast<uint16_t> (round (imageWidth * dpi));
-  size[0] = NumCols;
-  size[1] = NumRows;
-
-  region.SetSize(size);
-  region.SetIndex(start);
-
-  image->SetRegions(region);
-  image->SetSpacing(spacing);
-  image->Allocate();
-  RGB16Image::PixelType pixelValue;
-  pixelValue[0] = 65535;
-  pixelValue[1] = 65535;
-  pixelValue[2] = 65535;
-  image->FillBuffer(pixelValue);
-
-  // Step wedge origin and size in pixels
-  uint16_t stepWedgeOrigin[2] = {
-    static_cast<uint16_t> (round (0.40 * stepWedgeWidth * dpi)),
-    static_cast<uint16_t> (round (0.40 * stepWedgeWidth * dpi))
-    };
-  uint16_t stepWedgeSize[2] = {
-    static_cast<uint16_t> (round (stepWedgeWidth * dpi)),
-    static_cast<uint16_t> (round (stepWedgeHeight * dpi))
-    };
-
-  // Individual step origin in pixels is the same as the step wedge origin
-  uint16_t stepOrigin[2] = {
-    stepWedgeOrigin[0],
-    stepWedgeOrigin[1]
-    };
-
-  // Make a step wedge
-  for (std::size_t step = 20; step > 0; --step) {
-    
-    // Calculate pixel values for each step
-    pixelValue[0] = static_cast<uint16_t> (
-      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
-      );
-    pixelValue[1] = static_cast<uint16_t> (
-      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
-      );
-    pixelValue[2] = static_cast<uint16_t> (
-      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
-      );
-    
-    // Calculate step size in pixels
-    uint16_t stepSize[2] = {  // This is size of the last step
-      stepWedgeSize[0],
-      stepWedgeSize[1]
-      };
-    
-    // Width of the in between steps is 0.2 inches
-    if (20 > step) {
-      stepSize[1] = static_cast<uint16_t> (round ((
-        firstStepWidth
-        + static_cast<double> (step) * stepWidth
-        ) * dpi));
-    }
-
-    // Set pixel values for the step
-    for (uint16_t x = stepOrigin[0]; x < stepOrigin[0] + stepSize[0];
-         ++x) {
-      for (uint16_t y = stepOrigin[1]; y < stepOrigin[1] + stepSize[1];
-           ++y) {
-        RGB16Image::IndexType pixelIndex;
-        pixelIndex[0] = x;
-        pixelIndex[1] = y;
-
-        image->SetPixel(pixelIndex, pixelValue);
-      }
-    }
-  }
-
-  // We do first step separately because it has a different width theb the
-  // rest of the steps
-
-  // Calculate pixel values for the first step
-  pixelValue[0] = static_cast<uint16_t> (
-    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
-    );
-  pixelValue[1] = static_cast<uint16_t> (
-    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
-    );
-  pixelValue[2] = static_cast<uint16_t> (
-    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
-    );
-    
-  // Calculate size of the first step
-  uint16_t stepSize[2] = {
-    stepWedgeSize[0],
-    static_cast<uint16_t> (round (firstStepWidth * dpi))
-    };
-  
-  // Set pixel values for the first step
-  for (uint16_t x = stepOrigin[0]; x < stepOrigin[0] + stepSize[0];
-       ++x) {
-    for (uint16_t y = stepOrigin[1]; y < stepOrigin[1] + stepSize[1];
-         ++y) {
-      RGB16Image::IndexType pixelIndex;
-      pixelIndex[0] = x;
-      pixelIndex[1] = y;
-
-      image->SetPixel(pixelIndex, pixelValue);
-    }
-  }
-    
-  // Return the created image
-  return image;
-}
- 

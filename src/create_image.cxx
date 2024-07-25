@@ -1,5 +1,5 @@
 // ============================================================================
-// create_image.cpp (ITK_Playground) - Create an image and write it to a file
+// create_image.cxx (ITK_Playground) - Create an image and write it to a file
 //
 //  Copyright (C) 2024 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
@@ -21,7 +21,7 @@
 //
 // 2024-07-07 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
-// * create_image.cpp: created.
+// * create_image.cxx: created.
 //
 // ============================================================================
 

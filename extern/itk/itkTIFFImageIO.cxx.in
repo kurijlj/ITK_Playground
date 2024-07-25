@@ -1005,6 +1005,36 @@ TIFFImageIO::ReadRawByteFromTag(unsigned int t, unsigned int & value_count)
   return raw_data;
 }
 
+uint16_t
+TIFFImageIO::ReadCompressionFromImage() const
+{
+  // m_InternalImage needs to be valid
+  if (!m_InternalImage)
+  {
+    itkExceptionMacro(<< "Need to call CanReadFile before");
+  }
+  const ttag_t tag = TIFFTAG_COMPRESSION;  // 259
+  uint16_t compression = TIFFImageIO::NoCompression;  // Assume no compression
+  void * raw_data = nullptr;
+
+  const itkTIFFField * fld = TIFFFieldWithTag(m_InternalImage->m_Image, tag);
+
+  if (fld == nullptr)
+  {
+    itkExceptionMacro(<< "fld is nullptr");
+  }
+
+  int result = 0;
+  result = TIFFGetField(m_InternalImage->m_Image, tag, &compression);
+
+  if (result != 1)
+  {
+    itkExceptionMacro(<< "Tag cannot be found");
+  }
+
+  return compression;
+}
+
 void
 TIFFImageIO::PopulateColorPalette()
 {
@@ -1279,16 +1309,6 @@ TIFFImageIO::ReadTIFFTags()
   {
     _TIFFfree(raw_data);
   }
-}
-
-
-uint16_t
-TIFFImageIO::GetCompression() const
-{
-  int16_t compression = TIFFImageIO::NoCompression;
-  TIFFGetField(m_InternalImage->m_Image, TIFFTAG_COMPRESSION, &compression);
-
-  return compression;
 }
 
 
