@@ -54,6 +54,8 @@ business logic and CMake build instructions required for your app.
 - **create_image:** A simple test of ITK create image and write to image
   facilities.
 - **create_step_wedge:** Create computational optical density step wedge image.
+- **image_affine_transform:** Rotate and translate an image using ITK.
+- **split_channels:** Split color channels of an image.
 - **all**: Build all abovementioned targets.
 
 ## License

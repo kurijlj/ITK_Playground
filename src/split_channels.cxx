@@ -39,24 +39,28 @@
 // Related header
 
 // "C" headers
+#include <cctype>                    // required by std::tolower
 #include <cstdlib>                   // required by EXIT_SUCCESS, EXIT_FAILURE
 
 // Standard Library headers
 #include <exception>                 // required by std::current_exception
 #include <filesystem>                // required by std::filesystem
 #include <iostream>                  // required by cin, cout, ...
+#include <limits>                    // required by std::numeric_limits
 #include <string>                    // required by std::string
 #include <vector>                    // required by std::vector
 
 // External libraries headers
 #include <clipp.hpp>                 // command line arguments parsing
 #include <itkImage.h>                // required by itk::Image
+#include <itkImageAdaptor.h>         // required by itk::ImageAdaptor
 #include <itkImageFileReader.h>      // required for the reading image data
 #include <itkImageFileWriter.h>      // required for writing image data to file
+#include <itkRescaleIntensityImageFilter.h>  // required for rescaling image
+                                             // intensities
 #include <itkSmartPointer.h>         // required by itk::SmartPointer
 #include <itkTIFFImageIO.h>          // required for reading and writing
                                      // TIFF images
-#include <itkMetaDataObject.h>
 
 
 // ============================================================================
@@ -94,11 +98,41 @@ void printUsage(const clipp::group &, const std::string = kAppName,
 void printVersionInfo();
 void showHelp(const clipp::group &, const std::string = kAppName,
               const std::string = kAppDoc);
+std::string str_tolower(std::string);
 
 
 // ============================================================================
 // Utility class definitions
 // ============================================================================
+
+// Define the color channels
+enum ColorChannel { R, G, B };
+
+// Define the pixel type for the RGB image with 16-bit unsigned integer values
+using RGB16Pixel = itk::RGBPixel<uint16_t>;  // RGB pixel with 16-bit
+                                             // unsigned integer values
+
+// Define the accessor class for accessing the color channels of the RGB16Pixel
+template <ColorChannel channel>
+class RGB16ColorChannelAccessor {
+public:
+  using InternalType = RGB16Pixel;
+  using ExternalType = uint16_t;
+
+  static ExternalType
+  Get(const InternalType &input) {
+    switch (channel) {
+      case ColorChannel::R:
+        return input.GetRed();
+      case ColorChannel::G:
+        return input.GetGreen();
+      case ColorChannel::B:
+        return input.GetBlue();
+      default:
+        return 0;  // Should never reach this point
+    }
+  }
+};
 
 
 // ============================================================================
@@ -120,7 +154,8 @@ int main(int argc, char *argv[]) {
     bool print_usage;
     bool show_version;
     std::string input_file;
-    std::string output_file;
+    std::string channel;
+    bool overwrite;
     std::vector<std::string> unsupported;
   };
 
@@ -130,7 +165,8 @@ int main(int argc, char *argv[]) {
       false,        // print_usage
       false,        // show_version
       "",           // input_file
-      "result.tif", // output_file
+      "all",        // channel
+      false,        // overwrite
       {}            // unsupported options aggregator
   };
 
@@ -152,7 +188,12 @@ int main(int argc, char *argv[]) {
       //   positional arguments by checking if their values are set.
       (
         clipp::opt_value(istarget, "INPUT_FILE", user_options.input_file),
-        clipp::opt_value(istarget, "OUTPUT_FILE", user_options.output_file),
+        clipp::option("-c", "--channel")
+          .doc("color channel to extract (R, G, B, all) [default: all]")
+        & clipp::opt_value(istarget, "CHANNEL", user_options.channel),
+        clipp::option("-o", "--overwrite")
+          .set(user_options.overwrite)
+          .doc("overwrite existing files"),
         clipp::option("-h", "--help")
            .set(user_options.show_help)
            .doc("show this help message and exit"),
@@ -210,6 +251,31 @@ int main(int argc, char *argv[]) {
       throw EXIT_SUCCESS;
     }
 
+    // Check if the channel switch was triggered. If it was, we check if
+    // the value is valid.
+    std::string ch = std::string(str_tolower(user_options.channel));
+
+    if (ch != "r"
+        && ch != "red"
+        && ch != "g"
+        && ch != "green"
+        && ch != "b"
+        && ch != "blue"
+        && ch != "all"
+        ) {
+      std::cerr << kAppName
+        << ": Invalid color channel value: "
+        << user_options.channel
+        << "\n";
+
+      // Print short help message
+      printShortHelp(exec_name);
+
+      throw EXIT_FAILURE;
+    }
+
+    user_options.channel = ch;
+
     // No high priority switch was triggered. Now we check if the input
     // file was passed. If not we print the usage message and exit.
     if (user_options.input_file.empty()) {
@@ -220,7 +286,7 @@ int main(int argc, char *argv[]) {
       std::cout << "Usage: ";
       printUsage(parser_config, exec_name, fmt);
 
-      std::cout << std::endl;
+      std::cout << "\n";
 
       // Print short help message
       printShortHelp(exec_name);
@@ -235,7 +301,7 @@ int main(int argc, char *argv[]) {
       std::cerr << kAppName
         << ": File does not exist: "
         << user_options.input_file
-        << std::endl;
+        << "\n";
       throw EXIT_FAILURE;
     }
 
@@ -273,21 +339,58 @@ int main(int argc, char *argv[]) {
       throw EXIT_FAILURE;
     }
 
-    // Check if the output file already exists
-    if (fs::exists (user_options.output_file)) {
+    // Decompose the input file name into the base name and the extension
+    std::string out_base_name
+      = fs::path(user_options.input_file).stem().string();
+    std::string out_extension
+      = fs::path(user_options.input_file).extension().string();
+
+    // Check if the output file(s) already exists
+    if (
+        ("r" == user_options.channel
+          || "red" == user_options.channel
+          || "all" == user_options.channel
+          )
+        && !user_options.overwrite
+        && fs::exists (out_base_name + "_R" + out_extension)
+        ) {
       std::cerr << kAppName
         << ": Output file already exists: "
-        << user_options.output_file
+        << out_base_name << "_R" << out_extension
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+    if (
+        ("g" == user_options.channel
+          || "green" == user_options.channel
+          || "all" == user_options.channel
+          )
+        && !user_options.overwrite
+        && fs::exists (out_base_name + "_G" + out_extension)
+        ) {
+      std::cerr << kAppName
+        << ": Output file already exists: "
+        << out_base_name << "_G" << out_extension
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+    if (
+        ("b" == user_options.channel
+          || "blue" == user_options.channel
+          || "all" == user_options.channel
+          )
+        && !user_options.overwrite
+        && fs::exists (out_base_name + "_B" + out_extension)
+        ) {
+      std::cerr << kAppName
+        << ": Output file already exists: "
+        << out_base_name << "_B" << out_extension
         << "\n";
       throw EXIT_FAILURE;
     }
 
     // Main code goes here ----------------------------------------------------
-    using RGB16Pixel = itk::RGBPixel<uint16_t>;  // RGB pixel with 16-bit
-                                                 // unsigned integer values
-
     // Instantiate the TIFF image reader
-    // auto tiffImageIO = itk::TIFFImageIO::New();
     auto tiffImageIO = itk::TIFFImageIO::New();
 
     // Check if we are dealing with a regular TIFF image
@@ -330,19 +433,113 @@ int main(int argc, char *argv[]) {
       throw EXIT_FAILURE;
     }
 
-    // Write the image to the file
-    /*
-    try {
-    } catch (const itk::ExceptionObject & error) {
-      std::cerr << kAppName
-        << ": Error writing file: "
-        << user_options.output_file
-        << ". "
-        << error
-        << "\n";
-      throw EXIT_FAILURE;
+    // Define accessor and utility classes for accessing the color channels
+    // Define image types for the input and output images
+    using RGB16Image = itk::Image<RGB16Pixel, 2>;
+    using Mono16Image = itk::Image<uint16_t, 2>;
+
+    // Define the image reader and writer types
+    using RGB16Reader = itk::ImageFileReader<RGB16Image>;
+    using Mono16Writer = itk::ImageFileWriter<Mono16Image>;
+
+    // Define the adaptors for the color channels
+    using RedChannelAdaptor = itk::ImageAdaptor<RGB16Image,
+        RGB16ColorChannelAccessor<ColorChannel::R>>;
+    using GreenChannelAdaptor = itk::ImageAdaptor<RGB16Image,
+        RGB16ColorChannelAccessor<ColorChannel::G>>;
+    using BlueChannelAdaptor = itk::ImageAdaptor<RGB16Image,
+        RGB16ColorChannelAccessor<ColorChannel::B>>;
+    using RedChannelRescalerType
+      = itk::RescaleIntensityImageFilter<RedChannelAdaptor, Mono16Image>;
+    using GreenChannelRescalerType
+      = itk::RescaleIntensityImageFilter<GreenChannelAdaptor, Mono16Image>;
+    using BlueChannelRescalerType
+      = itk::RescaleIntensityImageFilter<BlueChannelAdaptor, Mono16Image>;
+    
+    // Instantiate objects and connect them
+    auto reader = RGB16Reader::New();
+    reader->SetFileName(user_options.input_file);
+    auto red_channel = RedChannelAdaptor::New();
+    red_channel->SetImage(reader->GetOutput());
+    auto green_channel = GreenChannelAdaptor::New();
+    green_channel->SetImage(reader->GetOutput());
+    auto blue_channel = BlueChannelAdaptor::New();
+    blue_channel->SetImage(reader->GetOutput());
+    auto red_rescaler = RedChannelRescalerType::New();
+    red_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
+    red_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
+    red_rescaler->SetInput(red_channel);
+    auto green_rescaler = GreenChannelRescalerType::New();
+    green_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
+    green_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
+    green_rescaler->SetInput(green_channel);
+    auto blue_rescaler = BlueChannelRescalerType::New();
+    blue_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
+    blue_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
+    blue_rescaler->SetInput(blue_channel);
+    auto red_writer = Mono16Writer::New();
+    red_writer->SetFileName((out_base_name + "_R" + out_extension).c_str());
+    red_writer->SetInput(red_rescaler->GetOutput());
+    auto green_writer = Mono16Writer::New();
+    green_writer->SetFileName((out_base_name + "_G" + out_extension).c_str());
+    green_writer->SetInput(green_rescaler->GetOutput());
+    auto blue_writer = Mono16Writer::New();
+    blue_writer->SetFileName((out_base_name + "_B" + out_extension).c_str());
+    blue_writer->SetInput(blue_rescaler->GetOutput());
+
+
+    // Write channels to files
+    if (
+        "r" == user_options.channel
+        || "red" == user_options.channel
+        || "all" == user_options.channel
+        ) {
+      try {
+        red_writer->Update();
+      } catch (const itk::ExceptionObject & error) {
+        std::cerr << kAppName
+          << ": Error writing file: '"
+          << out_base_name << "_R" << out_extension
+          << "'. "
+          << error
+          << "\n";
+        throw EXIT_FAILURE;
+      }
     }
-    */
+    if (
+        "g" == user_options.channel
+        || "green" == user_options.channel
+        || "all" == user_options.channel
+        ) {
+      try {
+        green_writer->Update();
+      } catch (const itk::ExceptionObject & error) {
+        std::cerr << kAppName
+          << ": Error writing file: '"
+          << out_base_name << "_G" << out_extension
+          << "'. "
+          << error
+          << "\n";
+        throw EXIT_FAILURE;
+      }
+    }
+    if (
+        "b" == user_options.channel
+        || "blue" == user_options.channel
+        || "all" == user_options.channel
+        ) {
+      try {
+        blue_writer->Update();
+      } catch (const itk::ExceptionObject & error) {
+        std::cerr << kAppName
+          << ": Error writing file: '"
+          << out_base_name << "_B" << out_extension
+          << "'. "
+          << error
+          << "\n";
+        throw EXIT_FAILURE;
+      }
+    }
 
     // Return success
     throw EXIT_SUCCESS;
@@ -402,4 +599,15 @@ void showHelp(const clipp::group &group, const std::string exec_name,
   man.append_section("", "Report bugs to <" + kAuthorEmail + ">.");
 
   std::cout << man;
+}
+
+std::string str_tolower(std::string s) {
+  std::transform(
+    s.begin(),
+    s.end(),
+    s.begin(),
+    [](unsigned char c){ return std::tolower(c); }
+    );
+
+  return s;
 }
