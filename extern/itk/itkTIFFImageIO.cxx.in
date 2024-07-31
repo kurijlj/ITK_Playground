@@ -47,7 +47,7 @@ TIFFImageIO::CanReadFile(const char * file)
     TIFFSetErrorHandler(save);
     return true;
   }
-  m_InternalImage->Clean();
+  m_InternalImage->Clean();  // 2024-07-26 LjK: For goodness, sake why?
   TIFFSetErrorHandler(save);
   return false;
 }
@@ -1005,16 +1005,17 @@ TIFFImageIO::ReadRawByteFromTag(unsigned int t, unsigned int & value_count)
   return raw_data;
 }
 
-uint16_t
-TIFFImageIO::ReadCompressionFromImage() const
+template <typename ValueType>
+ValueType
+TIFFImageIO::ReadTagFromImage(unsigned int t, ValueType d) const
 {
   // m_InternalImage needs to be valid
   if (!m_InternalImage)
   {
     itkExceptionMacro(<< "Need to call CanReadFile before");
   }
-  const ttag_t tag = TIFFTAG_COMPRESSION;  // 259
-  uint16_t compression = TIFFImageIO::NoCompression;  // Assume no compression
+  const ttag_t tag = t;
+  ValueType value = d;
   void * raw_data = nullptr;
 
   const itkTIFFField * fld = TIFFFieldWithTag(m_InternalImage->m_Image, tag);
@@ -1025,14 +1026,35 @@ TIFFImageIO::ReadCompressionFromImage() const
   }
 
   int result = 0;
-  result = TIFFGetField(m_InternalImage->m_Image, tag, &compression);
+  result = TIFFGetField(m_InternalImage->m_Image, tag, &value);
 
   if (result != 1)
   {
     itkExceptionMacro(<< "Tag cannot be found");
   }
 
-  return compression;
+  return value;
+}
+
+uint16_t
+TIFFImageIO::ReadCompressionFromImage() const
+{
+  return this->ReadTagFromImage<uint16_t>(
+    TIFFTAG_COMPRESSION,
+    TIFFImageIO::NoCompression
+    );
+}
+
+uint16_t
+TIFFImageIO::ReadSamplesPerPixelFromImage() const
+{
+  return this->ReadTagFromImage<uint16_t>(TIFFTAG_SAMPLESPERPIXEL, 3);
+}
+
+uint16_t
+TIFFImageIO::ReadBitsPerSampleFromImage() const
+{
+  return this->ReadTagFromImage<uint16_t>(TIFFTAG_BITSPERSAMPLE, 16);
 }
 
 void

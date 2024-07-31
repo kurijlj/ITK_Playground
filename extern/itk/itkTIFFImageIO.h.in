@@ -100,9 +100,22 @@ public:
   void
   Write(const void * buffer) override;
 
+  /** Read the tags from the the image */
+  template <typename ValueType>
+  ValueType
+  ReadTagFromImage(unsigned int t, ValueType d) const;
+
   /** Read image compression information from image */
   uint16_t
   ReadCompressionFromImage() const;
+
+  /** Read sample per pixel information from image */
+  uint16_t
+  ReadSamplesPerPixelFromImage() const;
+
+  /** Read bits per sample information from image */
+  uint16_t
+  ReadBitsPerSampleFromImage() const;
 
   enum
   {

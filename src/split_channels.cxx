@@ -289,44 +289,46 @@ int main(int argc, char *argv[]) {
     // Instantiate the TIFF image reader
     // auto tiffImageIO = itk::TIFFImageIO::New();
     auto tiffImageIO = itk::TIFFImageIO::New();
-    tiffImageIO->SetFileName(user_options.input_file);
 
-    // Read the image information from the file
-    try {
-      tiffImageIO->ReadImageInformation();  // Does this throw an exception?
-    } catch (const itk::ExceptionObject & error) {
+    // Check if we are dealing with a regular TIFF image
+    if (!tiffImageIO->CanReadFile(user_options.input_file.c_str())) {
       std::cerr << kAppName
-        << ": Error opening file: "
+        << ": File is not a regular TIFF image: "
         << user_options.input_file
-        << ". "
-        << error
         << "\n";
-      std::cerr << "Error: " << error << "\n";
       throw EXIT_FAILURE;
     }
 
-    const unsigned int Dimension = tiffImageIO->GetNumberOfDimensions();
+    // Set the file name and read the image information
+    tiffImageIO->SetFileName(user_options.input_file);
+    tiffImageIO->ReadImageInformation();
 
-    std::cout << "Dimensions: ( ";
-    for (unsigned int d = 0; d < Dimension; ++d) {
-      std::cout << tiffImageIO->GetDimensions(d) << " ";
+    // Check if we are dealing with an compressed image
+    if (tiffImageIO->ReadCompressionFromImage() != 1) {  // 1 = no compression
+      std::cerr << kAppName
+        << ": File is compressed: "
+        << user_options.input_file
+        << "\n";
+      throw EXIT_FAILURE;
     }
-    std::cout << ")\n";
 
-    std::cout << "Origin: ( ";
-    for (unsigned int d = 0; d < Dimension; ++d) {
-      std::cout << tiffImageIO->GetOrigin(d) << " ";
+    // Check if we are dealing with the RGB image
+    if (tiffImageIO->ReadSamplesPerPixelFromImage() != 3) {
+      std::cerr << kAppName
+        << ": File is not an RGB image: "
+        << user_options.input_file
+        << "\n";
+      throw EXIT_FAILURE;
     }
-    std::cout << ")\n";
 
-    std::cout << "Spacing: ( ";
-    for (unsigned int d = 0; d < Dimension; ++d) {
-      std::cout << tiffImageIO->GetSpacing(d) << " ";
+    // Check if we are dealing with 16-bit image
+    if (tiffImageIO->ReadBitsPerSampleFromImage() != 16) {
+      std::cerr << kAppName
+        << ": File is not a 16-bit image: "
+        << user_options.input_file
+        << "\n";
+      throw EXIT_FAILURE;
     }
-    std::cout << ")\n";
-
-    std::cout << "Compression: "
-      << tiffImageIO->ReadCompressionFromImage() << "\n";
 
     // Write the image to the file
     /*
