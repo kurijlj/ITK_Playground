@@ -1,5 +1,5 @@
 // ============================================================================
-// create_image.cpp (ITK_Playground) - Create an image and write it to a file
+// create_step_wedge.cxx (ITK_Playground) - Create computational step wedge
 //
 //  Copyright (C) 2024 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
@@ -17,11 +17,12 @@
 // with Focus Precision Analyze. If not, see <https://www.gnu.org/licenses/>.
 // ============================================================================
 
+
 // ============================================================================
 //
-// 2024-07-07 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
+// 2024-07-16 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
-// * create_image.cpp: created.
+// * create_step_wedge.cxx: created.
 //
 // ============================================================================
 
@@ -37,32 +38,50 @@
 
 // Related header
 
-// "C" system headers
+// "C" headers
+#include <cstdlib>               // required by EXIT_SUCCESS, EXIT_FAILURE
+#include <cmath>                 // required by log10f
 
 // Standard Library headers
-#include <cstdlib>    // required by EXIT_SUCCESS, EXIT_FAILURE
-#include <exception>  // required by std::current_exception
-#include <filesystem> // required by std::filesystem
-#include <iostream>   // required by cin, cout, ...
-#include <string>     // required by std::string
+#include <array>
+#include <exception>             // required by std::current_exception
+#include <filesystem>            // required by std::filesystem
+#include <iostream>              // required by cin, cout, cerr, ...
+#include <string>                // required by std::string
 
 // External libraries headers
-#include <clipp.hpp> // command line arguments parsing
-#include <itkImage.h>
-#include <itkImageFileWriter.h>
-#include <itkTIFFImageIO.h>
+#include <clipp.hpp>             // command line arguments parsing
+#include <itkImage.h>            // required by itk::Image
+#include <itkImageFileWriter.h>  // required for writing image data to file
+#include <itkRGBPixel.h>         // required for handling RGB images
+#include <itkSmartPointer.h>     // required by itk::SmartPointer
+#include <itkTIFFImageIO.h>      // required for reading and writing TIFF images
+#include <itkVector.h>           // required by itk::Vector (RGB pixel type)
+
 
 // ============================================================================
 // Namespace alias section
 // ============================================================================
 
-// namespace fs = std::filesystem;
+
+// ============================================================================
+// User defined types section
+// ============================================================================
+
+using ComponentType = uint16_t;                   // 16-bit unsigned integer
+                                                  // type
+using RGB16Pixel = itk::RGBPixel<ComponentType>;  // RGB pixel with 16-bit
+                                                  // unsigned integer values
+using RGB16Image = itk::Image<RGB16Pixel, 2>;     // 2D RGB image with 16-bit
+                                                  // unsigned integer pixel
+                                                  // values
+
 
 // ============================================================================
 // Global constants section
 // ============================================================================
 
-static const std::string kAppName = "create_image";
+static const std::string kAppName = "create_step_wedge";
 static const std::string kVersionString = "0.1";
 static const std::string kYearString = "2024";
 static const std::string kAuthorName = "Ljubomir Kurij";
@@ -75,11 +94,13 @@ License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\n\
 This is free software: you are free to change and redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\n";
 
+
 // ============================================================================
 // Global variables section
 // ============================================================================
 
 static std::string exec_name = kAppName;
+
 
 // ============================================================================
 // Utility function prototypes
@@ -91,6 +112,32 @@ void printUsage(const clipp::group &, const std::string = kAppName,
 void printVersionInfo();
 void showHelp(const clipp::group &, const std::string = kAppName,
               const std::string = kAppDoc);
+
+
+// ============================================================================
+// Function prototypes
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 'create_step_wedge' function
+// ----------------------------------------------------------------------------
+//
+// Description:
+// Create a computational step wedge image.
+//
+// Parameters:
+//   od: Reference to the initializer list of the optical density values.
+//   dpi: Image resolution in dots per inch.
+//
+// Returns:
+//   A pointer to the created image.
+//
+// ----------------------------------------------------------------------------
+RGB16Image::Pointer create_step_wedge(
+  std::array<double, 21> od,
+  uint16_t dpi = 400
+  );
+
 
 // ============================================================================
 // Main Function Section
@@ -195,49 +242,13 @@ int main(int argc, char *argv[]) {
     }
 
     // Main code goes here ----------------------------------------------------
-    using ImageType = itk::Image<unsigned short int, 2>; // 2D image with
-                                                         // unsigned short
-                                                         // int pixels
-    auto image = ImageType::New();
+    auto image = create_step_wedge(
+      std::array<double, 21> {0.04, 0.20, 0.35, 0.51, 0.65, 0.80, 0.94, 1.11,
+        1.27, 1.43, 1.59, 1.73, 1.88, 2.02, 2.18, 2.32, 2.49, 2.64,
+        2.79, 2.91, 3.08}
+    );
 
-    ImageType::RegionType region;
-    ImageType::IndexType start;
-    start[0] = 0;
-    start[1] = 0;
-    ImageType::SpacingType spacing;
-    spacing[0] = 25.4 / 400.0;
-    spacing[1] = 25.4 / 400.0;
-
-    ImageType::SizeType size;
-    unsigned int NumRows = 400;
-    unsigned int NumCols = 400;
-    size[0] = NumRows;
-    size[1] = NumCols;
-
-    region.SetSize(size);
-    region.SetIndex(start);
-
-    image->SetRegions(region);
-    image->SetSpacing(spacing);
-    image->Allocate();
-    image->FillBuffer(0);
-
-    // Make a square
-    unsigned int squareOrigin[2] = {50, 50};
-    unsigned int squareSize[2] = {100, 100};
-    for (unsigned int x = squareOrigin[0]; x <= squareOrigin[0] + squareSize[0];
-         ++x) {
-      for (unsigned int y = squareOrigin[1];
-           y < squareOrigin[1] + squareSize[1]; ++y) {
-        ImageType::IndexType pixelIndex;
-        pixelIndex[0] = x;
-        pixelIndex[1] = y;
-
-        image->SetPixel(pixelIndex, 65535);
-      }
-    }
-
-    using WriterType = itk::ImageFileWriter<ImageType>;
+    using WriterType = itk::ImageFileWriter<RGB16Image>;
     using TIFFIOType = itk::TIFFImageIO;
 
     auto tiffIO = TIFFIOType::New();
@@ -282,8 +293,9 @@ int main(int argc, char *argv[]) {
   return EXIT_FAILURE;
 }
 
+
 // ============================================================================
-// Function definitions
+// Utility function definitions
 // ============================================================================
 
 inline void printShortHelp(std::string exec_name) {
@@ -313,3 +325,144 @@ void showHelp(const clipp::group &group, const std::string exec_name,
 
   std::cout << man;
 }
+
+
+// ============================================================================
+// Function definitions
+// ============================================================================
+
+RGB16Image::Pointer create_step_wedge(
+    std::array<double, 21> od,
+    uint16_t dpi
+    ) {
+  auto image = RGB16Image::New();
+
+  // Step wedge dimensions in inches
+  double stepWedgeWidth = 0.50;
+  double stepWedgeHeight = 5.00;
+  double imageWidth = stepWedgeWidth + 0.80 * stepWedgeWidth;
+  double imageHeight = stepWedgeHeight + 0.80 * stepWedgeWidth;
+  double firstStepWidth = 0.59;
+  double stepWidth = 0.2;
+
+  RGB16Image::RegionType region;
+  RGB16Image::IndexType start;
+  start[0] = 0;
+  start[1] = 0;
+  RGB16Image::SpacingType spacing;
+  spacing[0] = 25.4 / static_cast<double>(dpi);
+  spacing[1] = 25.4 / static_cast<double>(dpi);
+
+  RGB16Image::SizeType size;
+  uint16_t NumRows = static_cast<uint16_t> (round (imageHeight * dpi));
+  uint16_t NumCols = static_cast<uint16_t> (round (imageWidth * dpi));
+  size[0] = NumCols;
+  size[1] = NumRows;
+
+  region.SetSize(size);
+  region.SetIndex(start);
+
+  image->SetRegions(region);
+  image->SetSpacing(spacing);
+  image->Allocate();
+  RGB16Image::PixelType pixelValue;
+  pixelValue[0] = 65535;
+  pixelValue[1] = 65535;
+  pixelValue[2] = 65535;
+  image->FillBuffer(pixelValue);
+
+  // Step wedge origin and size in pixels
+  uint16_t stepWedgeOrigin[2] = {
+    static_cast<uint16_t> (round (0.40 * stepWedgeWidth * dpi)),
+    static_cast<uint16_t> (round (0.40 * stepWedgeWidth * dpi))
+    };
+  uint16_t stepWedgeSize[2] = {
+    static_cast<uint16_t> (round (stepWedgeWidth * dpi)),
+    static_cast<uint16_t> (round (stepWedgeHeight * dpi))
+    };
+
+  // Individual step origin in pixels is the same as the step wedge origin
+  uint16_t stepOrigin[2] = {
+    stepWedgeOrigin[0],
+    stepWedgeOrigin[1]
+    };
+
+  // Make a step wedge
+  for (std::size_t step = 20; step > 0; --step) {
+    
+    // Calculate pixel values for each step
+    pixelValue[0] = static_cast<uint16_t> (
+      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
+      );
+    pixelValue[1] = static_cast<uint16_t> (
+      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
+      );
+    pixelValue[2] = static_cast<uint16_t> (
+      round (2140.00 + exp(-(od[step] - 6.966)/0.63))
+      );
+    
+    // Calculate step size in pixels
+    uint16_t stepSize[2] = {  // This is size of the last step
+      stepWedgeSize[0],
+      stepWedgeSize[1]
+      };
+    
+    // Width of the in between steps is 0.2 inches
+    if (20 > step) {
+      stepSize[1] = static_cast<uint16_t> (round ((
+        firstStepWidth
+        + static_cast<double> (step) * stepWidth
+        ) * dpi));
+    }
+
+    // Set pixel values for the step
+    for (uint16_t x = stepOrigin[0]; x < stepOrigin[0] + stepSize[0];
+         ++x) {
+      for (uint16_t y = stepOrigin[1]; y < stepOrigin[1] + stepSize[1];
+           ++y) {
+        RGB16Image::IndexType pixelIndex;
+        pixelIndex[0] = x;
+        pixelIndex[1] = y;
+
+        image->SetPixel(pixelIndex, pixelValue);
+      }
+    }
+  }
+
+  // We do first step separately because it has a different width theb the
+  // rest of the steps
+
+  // Calculate pixel values for the first step
+  pixelValue[0] = static_cast<uint16_t> (
+    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
+    );
+  pixelValue[1] = static_cast<uint16_t> (
+    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
+    );
+  pixelValue[2] = static_cast<uint16_t> (
+    round (2140.00 + exp(-(od[0] - 6.966)/0.63))
+    );
+    
+  // Calculate size of the first step
+  uint16_t stepSize[2] = {
+    stepWedgeSize[0],
+    static_cast<uint16_t> (round (firstStepWidth * dpi))
+    };
+  
+  // Set pixel values for the first step
+  for (uint16_t x = stepOrigin[0]; x < stepOrigin[0] + stepSize[0];
+       ++x) {
+    for (uint16_t y = stepOrigin[1]; y < stepOrigin[1] + stepSize[1];
+         ++y) {
+      RGB16Image::IndexType pixelIndex;
+      pixelIndex[0] = x;
+      pixelIndex[1] = y;
+
+      image->SetPixel(pixelIndex, pixelValue);
+    }
+  }
+    
+  // Return the created image
+  return image;
+}
+ 

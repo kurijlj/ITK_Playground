@@ -30,7 +30,7 @@ business logic and CMake build instructions required for your app.
    can specify the generator by invoking with the -G switch):
 
        ``` shell
-       cmake -G <Generator> -B . -S <project_source_tree> -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -DBUILD_TESTS:BOOL=[ON|OFF]
+       cmake -G <Generator> -B . -S <project_source_tree> -DITK_SKIP_PATH_LENGTH_CHECKS:BOOL=[ON|OFF] -DBUILD_SHARED_LIBS:BOOL=[ON|OFF] -DBUILD_TESTS:BOOL=[ON|OFF]
        ```
 
    3. Build executable using:
@@ -54,6 +54,8 @@ business logic and CMake build instructions required for your app.
 - **create_image:** A simple test of ITK create image and write to image
   facilities.
 - **create_step_wedge:** Create computational optical density step wedge image.
+- **image_affine_transform:** Rotate and translate an image using ITK.
+- **split_channels:** Split color channels of an image.
 - **all**: Build all abovementioned targets.
 
 ## License

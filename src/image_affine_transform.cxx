@@ -1,5 +1,5 @@
 // ============================================================================
-// image_affine_transform.cpp (ITK_Playground) - Rotate and translate an image
+// image_affine_transform.cxx (ITK_Playground) - Rotate and translate an image
 //
 //  Copyright (C) 2024 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
@@ -22,7 +22,7 @@
 //
 // 2024-07-18 Ljubomir Kurij <ljubomir_kurij@protonmail.com>
 //
-// * image_affine_transform.cpp: created.
+// * image_affine_transform.cxx: created.
 //
 // ============================================================================
 

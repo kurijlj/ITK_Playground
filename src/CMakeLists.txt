@@ -39,7 +39,7 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `app` target
-add_executable(create_image create_image.cpp)
+add_executable(create_image create_image.cxx)
 
 # Link the `create_image` target with the required libraries
 target_link_libraries(create_image PRIVATE
@@ -63,7 +63,7 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `create_step_wedge` target
-add_executable(create_step_wedge create_step_wedge.cpp)
+add_executable(create_step_wedge create_step_wedge.cxx)
 
 # Link the `create_step_wedge` target with the required libraries
 target_link_libraries(create_step_wedge  PRIVATE
@@ -87,10 +87,40 @@ find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
 # Set the source files for the `image_affine_transform` target
-add_executable(image_affine_transform image_affine_transform.cpp)
+add_executable(image_affine_transform image_affine_transform.cxx)
 
 # Link the `image_affine_transform` target with the required libraries
 target_link_libraries(image_affine_transform  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+
+# -----------------------------------------------------------------------------
+# Target: split_channels
+# -----------------------------------------------------------------------------
+#
+# Description: Split color channels of an image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `split_channels' target
+message(STATUS "Configuring the `split_channels` target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `split_channels` target
+add_executable(split_channels split_channels.cxx )
+
+# Link the `split_channels` target with the required libraries
+target_link_libraries(split_channels  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )

@@ -56,6 +56,25 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ITK)
 set(ITK_DIR ${ITK_BINARY_DIR} CACHE STRING "Make the ITK_DIR available to other modules" FORCE)
 
+# Patch the ITK library with the custom code
+configure_file (
+  "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.h.in"
+  "${ITK_SOURCE_DIR}/Modules/IO/TIFF/include/itkTIFFImageIO.h"
+  COPYONLY
+  )
+configure_file (
+  "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.cxx.in"
+  "${ITK_SOURCE_DIR}/Modules/IO/TIFF/src/itkTIFFImageIO.cxx"
+  COPYONLY
+  )
+
+# Add the test TIFF images
+FetchContent_Declare(
+  test_images
+  URL https://download.osgeo.org/libtiff/pics-3.8.0.tar.gz
+  )
+FetchContent_MakeAvailable(test_images)
+
 # Add the source files directory
 add_subdirectory ("${PROJECT_SOURCE_DIR}/src")
 
