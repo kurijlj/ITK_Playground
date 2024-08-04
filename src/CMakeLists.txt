@@ -124,3 +124,33 @@ target_link_libraries(split_channels  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
+
+
+# -----------------------------------------------------------------------------
+# Target: rgb_to_luminance
+# -----------------------------------------------------------------------------
+#
+# Description: Convert RGB image to luminance image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `rgb_to_luminance' target
+message(STATUS "Configuring the `rgb_to_luminance` target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `split_channels` target
+add_executable(rgb_to_luminance rgb_to_luminance.cxx )
+
+# Link the `split_channels` target with the required libraries
+target_link_libraries(rgb_to_luminance  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)

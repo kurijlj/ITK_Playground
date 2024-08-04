@@ -55,6 +55,7 @@ business logic and CMake build instructions required for your app.
   facilities.
 - **create_step_wedge:** Create computational optical density step wedge image.
 - **image_affine_transform:** Rotate and translate an image using ITK.
+- **rgb_to_luminance:** Convert RGB image to luminance image.
 - **split_channels:** Split color channels of an image.
 - **all**: Build all abovementioned targets.
 
