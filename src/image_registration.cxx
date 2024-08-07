@@ -490,6 +490,7 @@ int main(int argc, char *argv[]) {
     // Define the image reader and writer types
     using RGB16Reader = itk::ImageFileReader<RGB16Image>;
     using RGB16Writer = itk::ImageFileWriter<RGB16Image>;
+    using Mono16Writer = itk::ImageFileWriter<Mono16Image>;
 
     // Define the luminance filter type
     using LuminanceFilterType
@@ -498,10 +499,12 @@ int main(int argc, char *argv[]) {
     // Convert the input images to luminance images for easier registration
     auto fixed_reader = RGB16Reader::New();
     fixed_reader->SetFileName(user_options.fixed_image);
-    RGB16Image::Pointer fixed_image = fixed_reader->GetOutput();
+    auto fixed_image = RGB16Image::New();
+    fixed_image = fixed_reader->GetOutput();
     auto moving_reader = RGB16Reader::New();
     moving_reader->SetFileName(user_options.moving_image);
-    RGB16Image::Pointer moving_image = moving_reader->GetOutput();
+    auto moving_image = RGB16Image::New();
+    moving_image = moving_reader->GetOutput();
     auto fixed_to_luminance = LuminanceFilterType::New();
     fixed_to_luminance->SetInput(fixed_reader->GetOutput());
     auto moving_to_luminance = LuminanceFilterType::New();
@@ -511,7 +514,108 @@ int main(int argc, char *argv[]) {
     fixed_luminance = fixed_to_luminance->GetOutput();
     moving_luminance = moving_to_luminance->GetOutput();
 
+    try {
+      fixed_image->Update();
+    } catch (const itk::ExceptionObject &error) {
+      std::cerr << exec_name
+        << ": Error reading fixed image: '"
+        << user_options.fixed_image
+        << "'. '"
+        << error
+        << "\n";
+      return EXIT_FAILURE;
+    }
+    try {
+      moving_image->Update();
+    } catch (const itk::ExceptionObject &error) {
+      std::cerr << exec_name
+        << ": Error reading fixed image: '"
+        << user_options.moving_image
+        << "'. '"
+        << error
+        << "\n";
+      return EXIT_FAILURE;
+    }
+    try {
+      fixed_luminance->Update();
+    } catch (const itk::ExceptionObject &error) {
+      std::cerr << exec_name
+        << ": Error converting the fixed image to luminance: '"
+        << user_options.fixed_image
+        << "'. '"
+        << error
+        << "\n";
+      return EXIT_FAILURE;
+    }
+    try {
+      moving_luminance->Update();
+    } catch (const itk::ExceptionObject &error) {
+      std::cerr << exec_name
+        << ": Error converting the moving image to luminance: '"
+        << user_options.fixed_image
+        << "'. '"
+        << error
+        << "\n";
+      return EXIT_FAILURE;
+    }
+
+    // For testing purposes try to write all four images
+    auto rgb_writer = RGB16Writer::New();
+
+    rgb_writer->SetFileName("fixed_image.tif");
+    rgb_writer->SetInput(fixed_image);
+    // The complete pipeline is executed by invoking Update() on the writer.
+    try {
+      rgb_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name
+        << ": Exception object caught: '"
+        << error
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
+    rgb_writer->SetFileName("moving_image.tif");
+    rgb_writer->SetInput(moving_image);
+    // The complete pipeline is executed by invoking Update() on the writer.
+    try {
+      rgb_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name
+        << ": Exception object caught: '"
+        << error
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
+    auto mono_writer = Mono16Writer::New();
+
+    mono_writer->SetFileName("fixed_luminance.tif");
+    mono_writer->SetInput(fixed_luminance);
+    try {
+      mono_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name
+        << ": Exception object caught: '"
+        << error
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
+    mono_writer->SetFileName("moving_luminance.tif");
+    mono_writer->SetInput(moving_luminance);
+    try {
+      mono_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name
+        << ": Exception object caught: '"
+        << error
+        << "\n";
+      throw EXIT_FAILURE;
+    }
+
     // Try to read the images
+    /*
     try {
       fixed_reader->Update();
     } catch (const itk::ExceptionObject &error) {
@@ -534,6 +638,7 @@ int main(int argc, char *argv[]) {
         << "\n";
       return EXIT_FAILURE;
     }
+    */
     
     // The transform that will map the fixed image into the moving image.
     using TransformType = itk::AffineTransform<double, Dimension>;
@@ -613,6 +718,7 @@ int main(int argc, char *argv[]) {
     auto observer = itk::CommandIterationUpdate<OptimizerType>::New();
     optimizer->AddObserver(itk::IterationEvent(), observer);
 
+    std::cout << "Starting registration\n";
     try {
       registration->Update();
     } catch (const itk::ExceptionObject &error) {
@@ -621,6 +727,7 @@ int main(int argc, char *argv[]) {
         << error << "\n";
       return EXIT_FAILURE;
     }
+    std::cout << "Registration done\n";
 
     // The result of the registration process is an array of parameters that
     // defines the spatial transformation in an unique way. This final result
@@ -639,6 +746,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Result = \n";
     std::cout << " Metric value  = " << bestValue << "\n";
 
+    /*
     //  It is common, as the last step of a registration task, to use the
     //  resulting transform to map the moving image into the fixed image space.
     //  This is easily done with the ResampleImageFilter.
@@ -691,12 +799,13 @@ int main(int argc, char *argv[]) {
     try {
       writer->Update();
     } catch (const itk::ExceptionObject & error) {
-      std::cerr << kAppName
+      std::cerr << exec_name
         << ": Exception object caught: '"
         << error
         << "\n";
       throw EXIT_FAILURE;
     }
+    */
 
     // Return success
     throw EXIT_SUCCESS;
