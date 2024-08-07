@@ -97,30 +97,24 @@ target_link_libraries(image_affine_transform  PRIVATE
 
 
 # -----------------------------------------------------------------------------
-# Target: split_channels
+# Target: image_registration
 # -----------------------------------------------------------------------------
 #
-# Description: Split color channels of an image.
+# Description: Register two RGB images.
 #
 # -----------------------------------------------------------------------------
 
-# Show message that we are configuring the `split_channels' target
-message(STATUS "Configuring the `split_channels` target")
+# Show message that we are configuring the `image_registration' target
+message(STATUS "Configuring the `image_registration` target")
 
-# Find required libraries and packages
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
-find_package(Git REQUIRED)
-if (NOT Git_FOUND)
-  message(FATAL_ERROR "Git not found!")
-endif()
+# Set the source files for the `image_registration` target
+add_executable(image_registration image_registration.cxx)
 
-# Set the source files for the `split_channels` target
-add_executable(split_channels split_channels.cxx )
-
-# Link the `split_channels` target with the required libraries
-target_link_libraries(split_channels  PRIVATE
+# Link the `image_registration` target with the required libraries
+target_link_libraries(image_registration  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
@@ -151,6 +145,36 @@ add_executable(rgb_to_luminance rgb_to_luminance.cxx )
 
 # Link the `split_channels` target with the required libraries
 target_link_libraries(rgb_to_luminance  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+
+# -----------------------------------------------------------------------------
+# Target: split_channels
+# -----------------------------------------------------------------------------
+#
+# Description: Split color channels of an image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `split_channels' target
+message(STATUS "Configuring the `split_channels` target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `split_channels` target
+add_executable(split_channels split_channels.cxx )
+
+# Link the `split_channels` target with the required libraries
+target_link_libraries(split_channels  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
