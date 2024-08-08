@@ -51,23 +51,23 @@
 
 // External libraries headers
 #include <clipp.hpp>                 // command line arguments parsing
-#include <itkAffineTransform.h>
-#include <itkCastImageFilter.h>
-#include <itkCommandIterationUpdate.h>
+#include <itkCommand.h>
+#include <itkEuler2DTransform.h>
 #include <itkImage.h>                // required by itk::Image
 #include <itkImageFileReader.h>      // required for the reading image data
 #include <itkImageFileWriter.h>      // required for writing image data to file
-#include <itkImageRegistrationMethod.h>
+#include <itkImageRegistrationMethodv4.h>
 #include <itkLinearInterpolateImageFunction.h>
-#include <itkMeanSquaresImageToImageMetric.h>
+#include <itkMeanSquaresImageToImageMetricv4.h>
 #include <itkRGBToLuminanceImageFilter.h>  // required for converting RGB to
                                            // luminance image
-#include <itkRegularStepGradientDescentOptimizer.h>
+#include <itkRegularStepGradientDescentOptimizerv4.h>
 #include <itkResampleImageFilter.h>
+#include <itkRescaleIntensityImageFilter.h>
 #include <itkSmartPointer.h>         // required by itk::SmartPointer
+#include <itkSubtractImageFilter.h>
 #include <itkTIFFImageIO.h>          // required for reading and writing
                                      // TIFF images
-
 
 // ============================================================================
 // Global constants section
@@ -120,6 +120,37 @@ void showHelp(
 // ============================================================================
 // Utility class definitions
 // ============================================================================
+
+class CommandIterationUpdate : public itk::Command {
+public:
+  using Self = CommandIterationUpdate;
+  using Superclass = itk::Command;
+  using Pointer = itk::SmartPointer<Self>;
+  itkNewMacro(Self);
+ 
+protected:
+  CommandIterationUpdate() = default;
+ 
+public:
+  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+  using OptimizerPointer = const OptimizerType *;
+ 
+  void
+  Execute(itk::Object * caller, const itk::EventObject & event) override {
+    Execute((const itk::Object *) caller, event);
+  }
+ 
+  void
+  Execute(const itk::Object * object, const itk::EventObject & event) override {
+    auto optimizer = static_cast<OptimizerPointer>(object);
+    if (!itk::IterationEvent().CheckEvent(&event)) {
+      return;
+    }
+    std::cout << optimizer->GetCurrentIteration() << "   ";
+    std::cout << optimizer->GetValue() << "   ";
+    std::cout << optimizer->GetCurrentPosition() << "\n";
+  }
+};
 
 
 // ============================================================================
@@ -483,9 +514,9 @@ int main(int argc, char *argv[]) {
 
     // Define the pixel and image types
     constexpr unsigned int Dimension = 2;
-    using RGB16Pixel = itk::RGBPixel<uint16_t>;
+    using RGB16Pixel = itk::RGBPixel<float>;
     using RGB16Image = itk::Image<RGB16Pixel, Dimension>;
-    using Mono16Image = itk::Image<uint16_t, Dimension>;
+    using Mono16Image = itk::Image<float, Dimension>;
 
     // Define the image reader and writer types
     using RGB16Reader = itk::ImageFileReader<RGB16Image>;
@@ -529,7 +560,7 @@ int main(int argc, char *argv[]) {
       moving_image->Update();
     } catch (const itk::ExceptionObject &error) {
       std::cerr << exec_name
-        << ": Error reading fixed image: '"
+        << ": Error reading moving image: '"
         << user_options.moving_image
         << "'. '"
         << error
@@ -569,7 +600,7 @@ int main(int argc, char *argv[]) {
       rgb_writer->Update();
     } catch (const itk::ExceptionObject & error) {
       std::cerr << exec_name
-        << ": Exception object caught: '"
+        << ": Error writing file: 'fixed_image.tif'. "
         << error
         << "\n";
       throw EXIT_FAILURE;
@@ -582,7 +613,7 @@ int main(int argc, char *argv[]) {
       rgb_writer->Update();
     } catch (const itk::ExceptionObject & error) {
       std::cerr << exec_name
-        << ": Exception object caught: '"
+        << ": Error writing file: 'moving_image.tif'. "
         << error
         << "\n";
       throw EXIT_FAILURE;
@@ -596,7 +627,7 @@ int main(int argc, char *argv[]) {
       mono_writer->Update();
     } catch (const itk::ExceptionObject & error) {
       std::cerr << exec_name
-        << ": Exception object caught: '"
+        << ": Error writing file: 'fixed_luminance.tif'. "
         << error
         << "\n";
       throw EXIT_FAILURE;
@@ -608,204 +639,217 @@ int main(int argc, char *argv[]) {
       mono_writer->Update();
     } catch (const itk::ExceptionObject & error) {
       std::cerr << exec_name
-        << ": Exception object caught: '"
+        << ": Error writing file: 'moving_luminance.tif'. "
         << error
         << "\n";
       throw EXIT_FAILURE;
     }
 
-    // Try to read the images
-    /*
-    try {
-      fixed_reader->Update();
-    } catch (const itk::ExceptionObject &error) {
-      std::cerr << exec_name
-        << ": Error reading image: '"
-        << user_options.fixed_image
-        << "'. '"
-        << error
-        << "\n";
-      return EXIT_FAILURE;
-    }
-    try {
-      moving_reader->Update();
-    } catch (const itk::ExceptionObject &error) {
-      std::cerr << exec_name
-        << ": Error reading image: '"
-        << user_options.moving_image
-        << "'. '"
-        << error
-        << "\n";
-      return EXIT_FAILURE;
-    }
-    */
-    
-    // The transform that will map the fixed image into the moving image.
-    using TransformType = itk::AffineTransform<double, Dimension>;
-
-    //  An optimizer is required to explore the parameter space of the transform
-    //  in search of optimal values of the metric.
-    using OptimizerType = itk::RegularStepGradientDescentOptimizer;
-
-    //  The metric will compare how well the two images match each other. Metric
-    //  types are usually parameterized by the image types as it can be seen in
-    //  the following type declaration.
+    using TransformType = itk::Euler2DTransform<double>;
+ 
+    using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
     using MetricType
-      = itk::MeanSquaresImageToImageMetric<Mono16Image, Mono16Image>;
-
-    //  Finally, the type of the interpolator is declared. The interpolator will
-    //  evaluate the intensities of the moving image at non-grid positions.
-    using InterpolatorType
-      = itk::LinearInterpolateImageFunction<Mono16Image, double>;
-
-    //  The registration method type is instantiated using the types of the
-    //  fixed and moving images. This class is responsible for interconnecting
-    //  all the components that we have described so far.
+      = itk::MeanSquaresImageToImageMetricv4<Mono16Image, Mono16Image>;
     using RegistrationType
-      = itk::ImageRegistrationMethod<Mono16Image, Mono16Image>;
-
-    // Create components
-    auto metric = MetricType::New();
-    auto transform = TransformType::New();
-    auto optimizer = OptimizerType::New();
-    auto interpolator = InterpolatorType::New();
+      = itk::ImageRegistrationMethodv4<Mono16Image, Mono16Image, TransformType>;
+ 
+    auto metric       = MetricType::New();
+    auto optimizer    = OptimizerType::New();
     auto registration = RegistrationType::New();
-
-    // Each component is now connected to the instance of the
-    // registration method
+ 
     registration->SetMetric(metric);
     registration->SetOptimizer(optimizer);
-    registration->SetTransform(transform);
-    registration->SetInterpolator(interpolator);
 
-    // Set the registration inputs
+    auto initial_transform = TransformType::New();
+ 
     registration->SetFixedImage(fixed_luminance);
     registration->SetMovingImage(moving_luminance);
 
-    registration->SetFixedImageRegion(
-      fixed_luminance->GetLargestPossibleRegion()
+    using SpacingType = RGB16Image::SpacingType;
+    using OriginType  = RGB16Image::PointType;
+    using RegionType  = RGB16Image::RegionType;
+    using SizeType    = RGB16Image::SizeType;
+ 
+    const SpacingType fixed_spacing = fixed_image->GetSpacing();
+    const OriginType  fixed_origin  = fixed_image->GetOrigin();
+    const RegionType  fixed_region  = fixed_image->GetLargestPossibleRegion();
+    const SizeType    fixed_size    = fixed_region.GetSize();
+ 
+    TransformType::InputPointType center_fixed;
+ 
+    center_fixed[0] = fixed_origin[0] + fixed_spacing[0] * fixed_size[0] / 2.0;
+    center_fixed[1] = fixed_origin[1] + fixed_spacing[1] * fixed_size[1] / 2.0;
+    
+    const SpacingType moving_spacing = moving_image->GetSpacing();
+    const OriginType  moving_origin  = moving_image->GetOrigin();
+    const RegionType  moving_region  = moving_image->GetLargestPossibleRegion();
+    const SizeType    moving_size    = moving_region.GetSize();
+ 
+    TransformType::InputPointType center_moving;
+ 
+    center_moving[0]
+      = moving_origin[0] + moving_spacing[0] * moving_size[0] / 2.0;
+    center_moving[1]
+      = moving_origin[1] + moving_spacing[1] * moving_size[1] / 2.0;
+
+    initial_transform->SetCenter(center_fixed);
+    initial_transform->SetTranslation(center_moving - center_fixed);
+    initial_transform->SetAngle(0.0);
+ 
+    registration->SetInitialTransform(initial_transform);
+
+    using OptimizerScalesType = OptimizerType::ScalesType;
+    OptimizerScalesType optimizer_scales(
+      initial_transform->GetNumberOfParameters()
       );
 
-    //  Initialize the transform
-    using ParametersType = RegistrationType::ParametersType;
-    ParametersType initialParameters(transform->GetNumberOfParameters());
+    const double translation_scale = 1.0 / 1000.0;
+    optimizer_scales[0] = 1.0;
+    optimizer_scales[1] = translation_scale;
+    optimizer_scales[2] = translation_scale;
+ 
+    optimizer->SetScales(optimizer_scales);   
 
-    // rotation matrix
-    initialParameters[0] = 1.0; // R(0,0)
-    initialParameters[1] = 0.0; // R(0,1)
-    initialParameters[2] = 0.0; // R(1,0)
-    initialParameters[3] = 1.0; // R(1,1)
-
-    // translation vector
-    initialParameters[4] = 0.0;
-    initialParameters[5] = 0.0;
-
-    registration->SetInitialTransformParameters(initialParameters);
-
-    optimizer->SetMaximumStepLength(.1); // If this is set too high, you will
-                                         // get a "itk::ERROR::
-                                         // MeanSquaresImageToImageMetric
-                                         // (0xa27ce70): Too many samples map
-                                         // outside moving image buffer:
-                                         // 1818 10000" error
-
-    optimizer->SetMinimumStepLength(0.01);
-
-    // Set a stopping criterion
+    double initial_step_length = 0.1;
+ 
+    optimizer->SetRelaxationFactor(0.6);
+    optimizer->SetLearningRate(initial_step_length);
+    optimizer->SetMinimumStepLength(0.001);
     optimizer->SetNumberOfIterations(200);
-
-    // Connect an observer
-    auto observer = itk::CommandIterationUpdate<OptimizerType>::New();
+ 
+ 
+    auto observer = CommandIterationUpdate::New();
     optimizer->AddObserver(itk::IterationEvent(), observer);
-
-    std::cout << "Starting registration\n";
+ 
+    // One level registration process without shrinking and smoothing.
+    constexpr unsigned int number_of_levels = 1;
+ 
+    RegistrationType::ShrinkFactorsArrayType shrink_factors_per_level;
+    shrink_factors_per_level.SetSize(1);
+    shrink_factors_per_level[0] = 1;
+ 
+    RegistrationType::SmoothingSigmasArrayType smoothing_sigmas_per_level;
+    smoothing_sigmas_per_level.SetSize(1);
+    smoothing_sigmas_per_level[0] = 0;
+ 
+    registration->SetNumberOfLevels(number_of_levels);
+    registration->SetSmoothingSigmasPerLevel(smoothing_sigmas_per_level);
+    registration->SetShrinkFactorsPerLevel(shrink_factors_per_level);
+ 
     try {
       registration->Update();
-    } catch (const itk::ExceptionObject &error) {
+      std::cout << exec_name << ": Optimizer stop condition: "
+        << registration->GetOptimizer()->GetStopConditionDescription()
+        << "\n";
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name << "Error registering images: " << error << "\n";
+      return EXIT_FAILURE;
+    }
+ 
+    const TransformType::ParametersType final_parameters =
+      registration->GetOutput()->Get()->GetParameters();
+ 
+    const double final_angle = final_parameters[0];
+    const double final_translation_x = final_parameters[1];
+    const double final_translation_y = final_parameters[2];
+ 
+    const double rotation_center_x =
+      registration->GetOutput()->Get()->GetCenter()[0];
+    const double rotation_center_y =
+      registration->GetOutput()->Get()->GetCenter()[1];
+ 
+    const unsigned int number_of_iterations = optimizer->GetCurrentIteration();
+    const double best_value = optimizer->GetValue();
+    const double final_angle_in_degrees = final_angle * 180.0 / itk::Math::pi;
+ 
+    std::cout << "Result = " << "\n";
+    std::cout << " Angle (radians) = " << final_angle << "\n";
+    std::cout << " Angle (degrees) = " << final_angle_in_degrees << "\n";
+    std::cout << " Translation X   = " << final_translation_x << "\n";
+    std::cout << " Translation Y   = " << final_translation_y << "\n";
+    std::cout << " Fixed Center X  = " << rotation_center_x << "\n";
+    std::cout << " Fixed Center Y  = " << rotation_center_y << "\n";
+    std::cout << " Iterations      = " << number_of_iterations << "\n";
+    std::cout << " Metric value    = " << best_value << "\n";
+
+
+    using ResampleFilterType = itk::ResampleImageFilter<RGB16Image, RGB16Image>;
+    auto resample = ResampleFilterType::New();
+ 
+    resample->SetTransform(registration->GetTransform());
+    resample->SetInput(moving_image);
+ 
+    resample->SetSize(fixed_image->GetLargestPossibleRegion().GetSize());
+    resample->SetOutputOrigin(fixed_image->GetOrigin());
+    resample->SetOutputSpacing(fixed_image->GetSpacing());
+    resample->SetOutputDirection(fixed_image->GetDirection());
+
+    RGB16Image::PixelType default_pixel_value;
+    default_pixel_value[0]
+      = static_cast<float>(std::numeric_limits<uint16_t>::max());
+    default_pixel_value[1]
+      = static_cast<float>(std::numeric_limits<uint16_t>::max());
+    default_pixel_value[2]
+      = static_cast<float>(std::numeric_limits<uint16_t>::max());
+    resample->SetDefaultPixelValue(default_pixel_value);
+ 
+    using CastFilterType =
+      itk::CastImageFilter<RGB16Image, RGB16Image>;
+ 
+    auto caster = CastFilterType::New();
+ 
+    rgb_writer->SetFileName(out_base_name + "_registered" + out_extension);
+ 
+    caster->SetInput(resample->GetOutput());
+    rgb_writer->SetInput(caster->GetOutput());
+ 
+    try {
+      rgb_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
       std::cerr << exec_name
-        << ": Error registering images: "
+        << ": Error writing file: '"
+        << out_base_name << "_registered" << out_extension
+        << "'. " << error << "\n";
+      return EXIT_FAILURE;
+    }
+ 
+    using DifferenceFilterType
+      = itk::SubtractImageFilter<RGB16Image, RGB16Image, RGB16Image>;
+ 
+    auto difference = DifferenceFilterType::New();
+
+    /*
+    using RescalerType =
+      itk::RescaleIntensityImageFilter<RGB16Image, RGB16Image>;
+ 
+    auto intensity_rescaler = RescalerType::New();
+ 
+    intensity_rescaler->SetOutputMinimum(
+      static_cast<float>(std::numeric_limits<uint16_t>::min())
+      );
+    intensity_rescaler->SetOutputMaximum(
+      static_cast<float>(std::numeric_limits<uint16_t>::max())
+      );
+    */
+ 
+    difference->SetInput1(fixed_image);
+    difference->SetInput2(resample->GetOutput());
+ 
+    // intensity_rescaler->SetInput(difference->GetOutput());
+ 
+    rgb_writer->SetFileName("difference.tif");
+    // rgb_writer->SetInput(intensity_rescaler->GetOutput());
+    rgb_writer->SetInput(difference->GetOutput());
+ 
+    try {
+        rgb_writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+      std::cerr << exec_name
+        << ": Error writing file: 'difference.tif'. "
         << error << "\n";
       return EXIT_FAILURE;
     }
-    std::cout << "Registration done\n";
 
-    // The result of the registration process is an array of parameters that
-    // defines the spatial transformation in an unique way. This final result
-    // is obtained using the GetLastTransformParameters() method.
-
-    ParametersType finalParameters = registration->GetLastTransformParameters();
-    std::cout << "Final parameters: " << finalParameters << "\n";
-
-    // The value of the image metric corresponding to the last set of
-    // parameters can be obtained with the GetValue() method of the optimizer.
-
-    const double bestValue = optimizer->GetValue();
-
-    // Print out results
-    //
-    std::cout << "Result = \n";
-    std::cout << " Metric value  = " << bestValue << "\n";
-
-    /*
-    //  It is common, as the last step of a registration task, to use the
-    //  resulting transform to map the moving image into the fixed image space.
-    //  This is easily done with the ResampleImageFilter.
-
-    using ResampleFilterType = itk::ResampleImageFilter<RGB16Image, RGB16Image>;
-
-    auto resampler = ResampleFilterType::New();
-    resampler->SetInput(moving_image);
-
-    // The Transform that is produced as output of the Registration method is
-    // also passed as input to the resampling filter. Note the use of the
-    // methods GetOutput() and Get(). This combination is needed here because
-    // the registration method acts as a filter whose output is a transform
-    // decorated in the form of a DataObject. For details in this construction
-    // you may want to read the documentation of the DataObjectDecorator.
-
-    resampler->SetTransform(registration->GetOutput()->Get());
-
-    // As described in Section sec:ResampleImageFilter, the ResampleImageFilter
-    // requires additional parameters to be specified, in particular, the
-    // spacing, origin and size of the output image. The default pixel value is
-    // also set to a distinct gray level in order to highlight the regions that
-    // are mapped outside of the moving image.
-
-    resampler->SetSize(fixed_image->GetLargestPossibleRegion().GetSize());
-    resampler->SetOutputOrigin(fixed_image->GetOrigin());
-    resampler->SetOutputSpacing(fixed_image->GetSpacing());
-    resampler->SetOutputDirection(fixed_image->GetDirection());
-    RGB16Image::PixelType defaultPixelValue;
-    defaultPixelValue[0] = std::numeric_limits<uint16_t>::max();
-    defaultPixelValue[1] = std::numeric_limits<uint16_t>::max();
-    defaultPixelValue[2] = std::numeric_limits<uint16_t>::max();
-    resampler->SetDefaultPixelValue(defaultPixelValue);
-
-    // The output of the filter is passed to a writer that will store the
-    // image in a file. An CastImageFilter is used to convert the pixel type of
-    // the resampled image to the final type used by the writer. The cast and
-    // writer filters are instantiated below.
-
-    using CastFilterType = itk::CastImageFilter<RGB16Image, RGB16Image>;
-
-    auto caster = CastFilterType::New();
-    caster->SetInput(resampler->GetOutput());
-
-    auto writer = RGB16Writer::New();
-    writer->SetFileName(out_base_name + "_registered" + out_extension);
-    writer->SetInput(caster->GetOutput());
-
-    // The complete pipeline is executed by invoking Update() on the writer.
-    try {
-      writer->Update();
-    } catch (const itk::ExceptionObject & error) {
-      std::cerr << exec_name
-        << ": Exception object caught: '"
-        << error
-        << "\n";
-      throw EXIT_FAILURE;
-    }
-    */
 
     // Return success
     throw EXIT_SUCCESS;
