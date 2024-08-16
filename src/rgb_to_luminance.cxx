@@ -200,14 +200,14 @@ int main(int argc, char *argv[]) {
           .set(user_options.overwrite)
           .doc("overwrite existing files"),
         clipp::option("-h", "--help")
-           .set(user_options.show_help)
-           .doc("show this help message and exit"),
+          .set(user_options.show_help)
+          .doc("show this help message and exit"),
         clipp::option("--usage")
-           .set(user_options.print_usage)
-           .doc("give a short usage message"),
+          .set(user_options.print_usage)
+          .doc("give a short usage message"),
         clipp::option("-V", "--version")
-           .set(user_options.show_version)
-           .doc("print program version")
+          .set(user_options.show_version)
+          .doc("print program version")
         ).doc("general options:"),
       clipp::any_other(user_options.unsupported));
 
