@@ -38,11 +38,35 @@ message(STATUS "Configuring the `create_image` target")
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
-# Set the source files for the `app` target
+# Set the source files for the `create_image` target
 add_executable(create_image create_image.cxx)
 
 # Link the `create_image` target with the required libraries
 target_link_libraries(create_image PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+
+# -----------------------------------------------------------------------------
+# Target: create_image_from_buffer
+# -----------------------------------------------------------------------------
+#
+# Description: Create image from buffer and write it to a file.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `create_image_from_buffer' target
+message(STATUS "Configuring the `create_image_from_buffer` target")
+
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+# Set the source files for the `create_image_from_buffer` target
+add_executable(create_image_from_buffer create_image_from_buffer.cxx)
+
+# Link the `create_image_from_buffer` target with the required libraries
+target_link_libraries(create_image_from_buffer PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
