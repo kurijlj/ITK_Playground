@@ -1,3 +1,4 @@
+#include <climits>
 #include <cstdlib>
 
 #include <itkBinaryThresholdImageFilter.h>
@@ -7,6 +8,8 @@
 #include <itkImageFileReader.h>
 #include <itkImageFileWriter.h>
 #include <itkImageMomentsCalculator.h>
+#include <itkOtsuThresholdImageFilter.h>
+#include <itkInvertIntensityImageFilter.h>
 
 int
 main(int argc, char * argv[])
@@ -135,14 +138,28 @@ main(int argc, char * argv[])
 	const SpacingType & pixelSpacing = reader->GetOutput()->GetSpacing();
 	std::cout << "Pixel spacing: " << pixelSpacing << "\n";
 
-	using FilterType = itk::BinaryThresholdImageFilter<ImageType, ImageType>;
-	auto filter = FilterType::New();
+	using OtsuFilterType = itk::OtsuThresholdImageFilter<ImageType, ImageType>;
+	auto filterOtsu = OtsuFilterType::New();
+	filterOtsu->SetInput(reader->GetOutput());
+	filterOtsu->Update(); // To compute threshold
+	std::cout << "Threshold: " << filterOtsu->GetThreshold() << "\n";
+
+	using BinaryThreshFilterType
+		= itk::BinaryThresholdImageFilter<ImageType, ImageType>;
+	auto filter = BinaryThreshFilterType::New();
 	filter->SetInput(reader->GetOutput());
-	filter->SetUpperThreshold(32767);
-	filter->SetLowerThreshold(65535);
+	filter->SetUpperThreshold(SHRT_MAX);
+	filter->SetLowerThreshold(filterOtsu->GetThreshold());
 	filter->SetOutsideValue(0);
 	filter->SetInsideValue(65535);
 	filter->Update();
+
+	// using InvertIntensityImageFilterType
+	// 	= itk::InvertIntensityImageFilter<ImageType>;
+	// auto invertIntensityFilter = InvertIntensityImageFilterType::New();
+	// invertIntensityFilter->SetInput(filter->GetOutput());
+	// invertIntensityFilter->SetMaximum(65535);
+	// invertIntensityFilter->Update();
 
 	// Software Guide : BeginCodeSnippet
   	using ImageCalculatorType = itk::ImageMomentsCalculator<ImageType>;
@@ -159,10 +176,11 @@ main(int argc, char * argv[])
 		std::cerr << "Error: " << e << std::endl;
 		return EXIT_FAILURE;
 	}
-	calculator1->Print(std::cout, 0);
 
 	ImageCalculatorType::VectorType center1 = calculator1->GetCenterOfGravity();
-	std::cout << "Center1: " << center1[0] << ", " << center1[1] << "\n";
+	std::cout << "Center1: "
+		<< center1[0] << " mm, "
+		<< center1[1] << " mm\n";
 
 	try
 	{
@@ -198,10 +216,6 @@ main(int argc, char * argv[])
 		std::cerr << "Error: " << e << std::endl;
 		return EXIT_FAILURE;
 	}
-	calculator2->Print(std::cout, 0);
-
-	ImageCalculatorType::VectorType center2 = calculator2->GetCenterOfGravity();
-	std::cout << "Center2: " << center2[0] << ", " << center2[1] << "\n";
 
 	auto flipped = ImageType::New();
 
@@ -227,7 +241,15 @@ main(int argc, char * argv[])
 
 	calculator2->SetImage(flipped);
 	calculator2->Compute();
-	calculator2->Print(std::cout, 0);
+
+	ImageCalculatorType::VectorType center2 = calculator2->GetCenterOfGravity();
+	std::cout << "Center2: "
+		<< center2[0] << " mm, "
+		<< center2[1] << " mm\n";
+
+	std::cout << "Shifts: "
+		<< (center2[0] - center1[0]) / 2 << " mm, "
+		<< (center2[1] - center1[1]) / 2 << " mm\n";
 
 	try
 	{
