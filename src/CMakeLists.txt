@@ -178,3 +178,34 @@ target_link_libraries(rgb_to_luminance  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
+
+# -----------------------------------------------------------------------------
+# Target: step_wedge_denoise
+# -----------------------------------------------------------------------------
+#
+# Description: Anisotropic diffusion denoising of step wedge image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `step_wedge_denoise' target
+message(STATUS "Configuring the `step_wedge_denoise' target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `split_channels` target
+add_executable(step_wedge_denoise step_wedge_denoise.cxx )
+
+# Link the `split_channels` target with the required libraries
+target_link_libraries(step_wedge_denoise  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+# End of `src/CMakeLists.txt'
