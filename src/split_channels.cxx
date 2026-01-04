@@ -52,12 +52,11 @@
 
 // External libraries headers
 #include <clipp.hpp>                 // command line arguments parsing
+#include <itkCastImageFilter.h>
 #include <itkImage.h>                // required by itk::Image
 #include <itkImageAdaptor.h>         // required by itk::ImageAdaptor
 #include <itkImageFileReader.h>      // required for the reading image data
 #include <itkImageFileWriter.h>      // required for writing image data to file
-#include <itkRescaleIntensityImageFilter.h>  // required for rescaling image
-                                             // intensities
 #include <itkSmartPointer.h>         // required by itk::SmartPointer
 #include <itkTIFFImageIO.h>          // required for reading and writing
                                      // TIFF images
@@ -449,6 +448,12 @@ int main(int argc, char *argv[]) {
         RGB16ColorChannelAccessor<ColorChannel::G>>;
     using BlueChannelAdaptor = itk::ImageAdaptor<RGB16Image,
         RGB16ColorChannelAccessor<ColorChannel::B>>;
+    using RedChannelCastType
+      = itk::CastImageFilter<RedChannelAdaptor, Mono16Image>;
+    using GreenChannelCastType
+      = itk::CastImageFilter<GreenChannelAdaptor, Mono16Image>;
+    using BlueChannelCastType
+      = itk::CastImageFilter<BlueChannelAdaptor, Mono16Image>;
     using RedChannelRescalerType
       = itk::RescaleIntensityImageFilter<RedChannelAdaptor, Mono16Image>;
     using GreenChannelRescalerType
@@ -465,27 +470,21 @@ int main(int argc, char *argv[]) {
     green_channel->SetImage(reader->GetOutput());
     auto blue_channel = BlueChannelAdaptor::New();
     blue_channel->SetImage(reader->GetOutput());
-    auto red_rescaler = RedChannelRescalerType::New();
-    red_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
-    red_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
-    red_rescaler->SetInput(red_channel);
-    auto green_rescaler = GreenChannelRescalerType::New();
-    green_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
-    green_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
-    green_rescaler->SetInput(green_channel);
-    auto blue_rescaler = BlueChannelRescalerType::New();
-    blue_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
-    blue_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
-    blue_rescaler->SetInput(blue_channel);
+    auto red_cast = RedChannelCastType::New();
+    red_cast->SetInput(red_channel);
+    auto green_cast = GreenChannelCastType::New();
+    green_cast->SetInput(green_channel);
+    auto blue_cast = BlueChannelCastType::New();
+    blue_cast->SetInput(blue_channel);
     auto red_writer = Mono16Writer::New();
     red_writer->SetFileName((out_base_name + "_R" + out_extension).c_str());
-    red_writer->SetInput(red_rescaler->GetOutput());
+    red_writer->SetInput(red_cast->GetOutput());
     auto green_writer = Mono16Writer::New();
     green_writer->SetFileName((out_base_name + "_G" + out_extension).c_str());
-    green_writer->SetInput(green_rescaler->GetOutput());
+    green_writer->SetInput(green_cast->GetOutput());
     auto blue_writer = Mono16Writer::New();
     blue_writer->SetFileName((out_base_name + "_B" + out_extension).c_str());
-    blue_writer->SetInput(blue_rescaler->GetOutput());
+    blue_writer->SetInput(blue_cast->GetOutput());
 
 
     // Write channels to files

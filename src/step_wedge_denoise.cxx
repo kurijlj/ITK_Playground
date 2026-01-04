@@ -10,7 +10,8 @@
 #include <itkImageAdaptor.h>
 #include <itkImageFileReader.h>
 #include <itkImageFileWriter.h>
-#include <itkRescaleIntensityImageFilter.h>
+#include <itkImageRegionConstIterator.h>
+#include <itkImageRegionIterator.h>
 #include <itkTIFFImageIO.h>
 
 enum class ColorChannel { Red, Green, Blue };
@@ -109,8 +110,6 @@ int main(int argc, char* argv[]) {
         RGB16Image,
         RGB16ColorChannelAccessor<ColorChannel::Red>
     >;
-    using RedChannelRescalerType
-      = itk::RescaleIntensityImageFilter<RedChannelAdaptor, Mono16Image>;
 
     // Define the bilateral filter type
     using DenoisingFilterType
@@ -119,24 +118,45 @@ int main(int argc, char* argv[]) {
     // Instantiate objects and connect them
     auto reader = RGB16Reader::New();
     reader->SetFileName(input_file);
+    reader->Update();  // Must read the image first to get valid regions
 
     auto red_channel = RedChannelAdaptor::New();
     red_channel->SetImage(reader->GetOutput());
 
-    auto red_rescaler = RedChannelRescalerType::New();
-    red_rescaler->SetOutputMinimum(std::numeric_limits<uint16_t>::min());
-    red_rescaler->SetOutputMaximum(std::numeric_limits<uint16_t>::max());
-    red_rescaler->SetInput(red_channel);
+    // Create a real Mono16Image from the adaptor
+    auto red_image = Mono16Image::New();
+    red_image->SetRegions(reader->GetOutput()->GetLargestPossibleRegion());
+    red_image->SetSpacing(reader->GetOutput()->GetSpacing());
+    red_image->SetOrigin(reader->GetOutput()->GetOrigin());
+    red_image->Allocate();
 
-    double rangeSigma{9.0};
-    double domainSigmas[Dimension] = {10.0, 10.0};
+    // Copy pixel values from adaptor to real image
+    itk::ImageRegionConstIterator<RedChannelAdaptor> inputIt(
+        red_channel, red_channel->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<Mono16Image> outputIt(
+        red_image, red_image->GetLargestPossibleRegion());
+
+    for (inputIt.GoToBegin(), outputIt.GoToBegin();
+         !inputIt.IsAtEnd();
+         ++inputIt, ++outputIt) {
+        outputIt.Set(inputIt.Get());
+    }
+
+    // For 16-bit images, rangeSigma should be scaled appropriately
+    // A typical value might be 5-10% of the dynamic range
+    double rangeSigma{3000.0};  // ~5% of 65535
+    double domainSigmas[Dimension] = {4.0, 4.0};
     auto red_filter = DenoisingFilterType::New();
-    red_filter->SetInput(red_rescaler->GetOutput());
     red_filter->SetDomainSigma(domainSigmas);
     red_filter->SetRangeSigma(rangeSigma);
+    red_filter->SetInput(red_image);
 
     auto red_writer = Mono16Writer::New();
-    red_writer->SetFileName((out_base_name + "_R" + out_extension).c_str());
+    red_writer->SetFileName((
+        out_base_name
+        + "_R_Denoised"
+        + out_extension
+    ).c_str());
     red_writer->SetInput(red_filter->GetOutput());
 
 

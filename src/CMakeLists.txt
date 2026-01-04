@@ -170,10 +170,10 @@ if (NOT Git_FOUND)
   message(FATAL_ERROR "Git not found!")
 endif()
 
-# Set the source files for the `split_channels` target
+# Set the source files for the `rgb_to_luminance` target
 add_executable(rgb_to_luminance rgb_to_luminance.cxx )
 
-# Link the `split_channels` target with the required libraries
+# Link the `rgb_to_luminance` target with the required libraries
 target_link_libraries(rgb_to_luminance  PRIVATE
   clipp
   ${ITK_LIBRARIES}
@@ -199,11 +199,40 @@ if (NOT Git_FOUND)
   message(FATAL_ERROR "Git not found!")
 endif()
 
-# Set the source files for the `split_channels` target
+# Set the source files for the `step_wedge_denoise` target
 add_executable(step_wedge_denoise step_wedge_denoise.cxx )
 
-# Link the `split_channels` target with the required libraries
+# Link the `step_wedge_denoise` target with the required libraries
 target_link_libraries(step_wedge_denoise  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+# -----------------------------------------------------------------------------
+# Target: rectangle_to_image
+# -----------------------------------------------------------------------------
+#
+# Description: Convert spatial polygon to an image.
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `rectangle_to_image' target
+message(STATUS "Configuring the `rectangle_to_image' target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `rectangle_to_image` target
+add_executable(rectangle_to_image rectangle_to_image.cxx )
+
+# Link the `rectangle_to_image` target with the required libraries
+target_link_libraries(rectangle_to_image PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
