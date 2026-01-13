@@ -184,7 +184,7 @@ target_link_libraries(rgb_to_luminance  PRIVATE
 # Target: shifts_calculator
 # -----------------------------------------------------------------------------
 #
-# Description: Calculate field offset from an EPID acquisition
+# Description: Calculate EPID panel offset from an EPID acquisition
 #
 # -----------------------------------------------------------------------------
 
@@ -200,10 +200,10 @@ if (NOT Git_FOUND)
   message(FATAL_ERROR "Git not found!")
 endif()
 
-# Set the source files for the `split_channels` target
+# Set the source files for the `shifts_calculator` target
 add_executable(shifts_calculator shifts_calculator.cxx )
 
-# Link the `split_channels` target with the required libraries
+# Link the `shifts_calculator` target with the required libraries
 target_link_libraries(shifts_calculator  PRIVATE
   clipp
   ${ITK_LIBRARIES}

@@ -20,15 +20,15 @@ main(int argc, char * argv[])
 		return EXIT_FAILURE;
 	}
 
-	//  Next, we instantiate the type to be used for storing the image once it is
-	//  read into memory.
+	//  Next, we instantiate the type to be used for storing the image once it
+	// is read into memory.
 	using PixelType = signed short;
 	constexpr unsigned int Dimension = 2;
 
 	using ImageType = itk::Image<PixelType, Dimension>;
 
-	// We use the image type for instantiating the series reader type and then we
-	// construct one object of this class.
+	// We use the image type for instantiating the series reader type and then
+	// we construct one object of this class.
 	using ReaderType = itk::ImageFileReader<ImageType>;
 
 	auto reader = ReaderType::New();
@@ -57,9 +57,9 @@ main(int argc, char * argv[])
 
 	// ITK internally queries GDCM and obtains all the DICOM tags from the file
 	// headers. The tag values are stored in the MetaDataDictionary
-	// which is a general-purpose container for \{key,value\} pairs. The Metadata
-	// dictionary can be recovered from any ImageIO class by invoking the
-	// GetMetaDataDictionary() method.
+	// which is a general-purpose container for \{key,value\} pairs. The
+	// Metadata dictionary can be recovered from any ImageIO class by invoking
+	// the GetMetaDataDictionary() method.
 	using DictionaryType = itk::MetaDataDictionary;
 
 	const DictionaryType & dictionary = dicomIO->GetMetaDataDictionary();
@@ -69,9 +69,9 @@ main(int argc, char * argv[])
 	// string type in order to receive those particular values.
 	using MetaDataStringType = itk::MetaDataObject<std::string>;
 
-	// The metadata dictionary is organized as a container with its corresponding
-	// iterators. We can therefore visit all its entries by first getting access to
-	// its Begin() and End() methods.
+	// The metadata dictionary is organized as a container with its
+	// corresponding iterators. We can therefore visit all its entries by first
+	// getting access to its Begin() and End() methods.
 	auto itr = dictionary.Begin();
 	auto end = dictionary.End();
 
@@ -86,7 +86,8 @@ main(int argc, char * argv[])
 	{
 		itk::MetaDataObjectBase::Pointer entry = itr->second;
 
-		MetaDataStringType::Pointer entryvalue = dynamic_cast<MetaDataStringType *>(entry.GetPointer());
+		MetaDataStringType::Pointer entryvalue
+			= dynamic_cast<MetaDataStringType *>(entry.GetPointer());
 
 		if (entryvalue)
 		{
@@ -98,10 +99,10 @@ main(int argc, char * argv[])
 		++itr;
 	}
 
-	//  It is also possible to query for specific entries instead of reading all of
-	//  them as we did above. In this case, the user must provide the tag
-	//  identifier using the standard DICOM encoding. The identifier is stored in a
-	//  string and used as key in the dictionary.
+	//  It is also possible to query for specific entries instead of reading all
+	//  of them as we did above. In this case, the user must provide the tag
+	//  identifier using the standard DICOM encoding. The identifier is stored
+	//  in a string and used as key in the dictionary.
 	std::string entryId = "0010|0010";
 
 	auto tagItr = dictionary.Find(entryId);
@@ -115,8 +116,10 @@ main(int argc, char * argv[])
 
 	// Since the entry may or may not be of string type we must again use a
 	// dynamic_cast in order to attempt to convert it to a string dictionary
-	// entry. If the conversion is successful, we can then print out its content.
-	MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
+	// entry. If the conversion is successful, we can then print out
+	// its content.
+	MetaDataStringType::ConstPointer entryvalue
+		= dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
 
 	if (entryvalue)
 	{
@@ -153,13 +156,6 @@ main(int argc, char * argv[])
 	filter->SetOutsideValue(0);
 	filter->SetInsideValue(65535);
 	filter->Update();
-
-	// using InvertIntensityImageFilterType
-	// 	= itk::InvertIntensityImageFilter<ImageType>;
-	// auto invertIntensityFilter = InvertIntensityImageFilterType::New();
-	// invertIntensityFilter->SetInput(filter->GetOutput());
-	// invertIntensityFilter->SetMaximum(65535);
-	// invertIntensityFilter->Update();
 
 	// Software Guide : BeginCodeSnippet
   	using ImageCalculatorType = itk::ImageMomentsCalculator<ImageType>;
@@ -263,5 +259,6 @@ main(int argc, char * argv[])
 
 	return EXIT_SUCCESS;
 }
+
 
 // End of `shifts_calculator.cxx'
