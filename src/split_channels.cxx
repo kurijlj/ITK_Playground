@@ -407,7 +407,9 @@ int main(int argc, char *argv[]) {
     tiffImageIO->ReadImageInformation();
 
     // Check if we are dealing with an compressed image
-    if (tiffImageIO->ReadCompressionFromImage() != 1) {  // 1 = no compression
+    if (tiffImageIO->GetCompressor() != "NoCompression"
+      && !tiffImageIO->GetCompressor().empty()
+    ) {
       std::cerr << kAppName
         << ": File is compressed: "
         << user_options.input_file
@@ -416,7 +418,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Check if we are dealing with the RGB image
-    if (tiffImageIO->ReadSamplesPerPixelFromImage() != 3) {
+    if (tiffImageIO->GetNumberOfComponents() != 3) {
       std::cerr << kAppName
         << ": File is not an RGB image: "
         << user_options.input_file
@@ -424,8 +426,9 @@ int main(int argc, char *argv[]) {
       throw EXIT_FAILURE;
     }
 
-    // Check if we are dealing with 16-bit image
-    if (tiffImageIO->ReadBitsPerSampleFromImage() != 16) {
+    // Check if we are dealing with 16-bit image. GetComponentSize() returns
+    // bytes, so 2 bytes = 16 bits.
+    if (tiffImageIO->GetComponentSize() != 2) {
       std::cerr << kAppName
         << ": File is not a 16-bit image: "
         << user_options.input_file

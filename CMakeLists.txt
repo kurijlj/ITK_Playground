@@ -15,6 +15,8 @@ project (
   )
 
 # Set the C++ standard to C++17 and make it required
+set (CMAKE_C_STANDARD 99)
+set (CMAKE_C_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -49,24 +51,31 @@ target_include_directories (
 include(FetchContent)
 
 # Add the ITK library
+set(BUILD_TESTING OFF CACHE BOOL "Disable ITK testing" FORCE)
 FetchContent_Declare(
   ITK
-  URL https://github.com/InsightSoftwareConsortium/ITK/releases/download/v5.3.0/InsightToolkit-5.3.0.zip 
+  GIT_REPOSITORY https://github.com/InsightSoftwareConsortium/ITK
+  GIT_TAG        f51594ad88194a72cdc06a314dafff709fcdc2e9
   )
 FetchContent_MakeAvailable(ITK)
-set(ITK_DIR ${ITK_BINARY_DIR} CACHE STRING "Make the ITK_DIR available to other modules" FORCE)
+set(
+  ITK_DIR ${ITK_BINARY_DIR}
+  CACHE STRING
+    "Make the ITK_DIR available to other modules"
+  FORCE
+  )
 
-# Patch the ITK library with the custom code
-configure_file (
-  "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.h.in"
-  "${ITK_SOURCE_DIR}/Modules/IO/TIFF/include/itkTIFFImageIO.h"
-  COPYONLY
-  )
-configure_file (
-  "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.cxx.in"
-  "${ITK_SOURCE_DIR}/Modules/IO/TIFF/src/itkTIFFImageIO.cxx"
-  COPYONLY
-  )
+# # Patch the ITK library with the custom code
+# configure_file (
+#   "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.h.in"
+#   "${ITK_SOURCE_DIR}/Modules/IO/TIFF/include/itkTIFFImageIO.h"
+#   COPYONLY
+#   )
+# configure_file (
+#   "${PROJECT_SOURCE_DIR}/extern/itk/itkTIFFImageIO.cxx.in"
+#   "${ITK_SOURCE_DIR}/Modules/IO/TIFF/src/itkTIFFImageIO.cxx"
+#   COPYONLY
+#   )
 
 # Add the test TIFF images
 FetchContent_Declare(
