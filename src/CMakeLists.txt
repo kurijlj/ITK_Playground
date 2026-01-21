@@ -208,3 +208,36 @@ target_link_libraries(shifts_calculator  PRIVATE
   clipp
   ${ITK_LIBRARIES}
 )
+
+
+# -----------------------------------------------------------------------------
+# Target: shift_epid
+# -----------------------------------------------------------------------------
+#
+# Description: Calculate EPID panel offset from an EPID acquisition
+#
+# -----------------------------------------------------------------------------
+
+# Show message that we are configuring the `shift_epid' target
+message(STATUS "Configuring the `shift_epid' target")
+
+# Find required libraries and packages
+find_package(ITK REQUIRED)
+include(${ITK_USE_FILE})
+
+find_package(Git REQUIRED)
+if (NOT Git_FOUND)
+  message(FATAL_ERROR "Git not found!")
+endif()
+
+# Set the source files for the `shifts_calculator` target
+add_executable(shift_epid shift_epid.cxx )
+
+# Link the `shifts_calculator` target with the required libraries
+target_link_libraries(shift_epid  PRIVATE
+  clipp
+  ${ITK_LIBRARIES}
+)
+
+
+# End of `CMakeLists.txt'
